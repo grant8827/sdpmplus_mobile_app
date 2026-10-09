@@ -10,9 +10,17 @@ import { PinModal } from '../../components/PinModal';
 import { hasGeofence, isWithinGeofence, type Coordinates } from '../../utils/geofence';
 
 const POLL_MS = 4000;
-// GPS fixes are far more expensive (battery/time) than the plain API poll
-// above, so they refresh on their own, much slower, interval.
-const LOCATION_POLL_MS = 5000;
+// How often the screen re-checks that the last location is still recent
+// (isWithinGeofence ignores one older than 30 seconds).
+const LOCATION_TICK_MS = 5000;
+
+// Android: use Google's location service (GPS + Wi-Fi + cell towers).
+// The library's default there is GPS only, which can take a minute or
+// more to get a first fix, especially inside a car or building.
+Geolocation.setRNConfiguration({ skipPermissionRequests: false, locationProvider: 'playServices' });
+
+const toCoordinates = (position: { coords: { latitude: number; longitude: number; accuracy: number } }): Coordinates =>
+  ({ lat: position.coords.latitude, lon: position.coords.longitude, accuracy: position.coords.accuracy, timestamp: Date.now() });
 
 async function requestLocationPermission(): Promise<boolean> {
   // iOS: calling Geolocation.getCurrentPosition triggers the system
@@ -34,12 +42,15 @@ async function requestLocationPermission(): Promise<boolean> {
 function getCurrentPosition(): Promise<Coordinates | null> {
   return new Promise(resolve => {
     Geolocation.getCurrentPosition(
-      position => resolve({ lat: position.coords.latitude, lon: position.coords.longitude, accuracy: position.coords.accuracy, timestamp: Date.now() }),
+      position => resolve(toCoordinates(position)),
       () => resolve(null),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 },
     );
   });
 }
+
+const isFresh = (position: Coordinates | null): position is Coordinates =>
+  position != null && position.timestamp != null && Date.now() - position.timestamp < 15000;
 
 /**
  * Whether a child's drop-off/pick-up should be geofence-blocked right now.
@@ -96,26 +107,44 @@ export function DropoffPickupScreen() {
     return () => { cancelled = true; clearInterval(interval); };
   }, [token]);
 
+  // Location stays on while this screen is open (watchPosition), so the
+  // phone keeps improving its fix and the buttons enable as soon as it is
+  // good enough. Asking for a brand-new fix every few seconds instead
+  // made the phone start from scratch each time.
   useEffect(() => {
     let cancelled = false;
-    const refreshLocation = async () => {
+    let watchId: number | null = null;
+    (async () => {
       const granted = await requestLocationPermission();
       if (cancelled) return;
       setLocationPermissionDenied(!granted);
       if (!granted) { setDevicePosition(null); return; }
-      const position = await getCurrentPosition();
-      if (!cancelled) setDevicePosition(position);
-    };
-    refreshLocation();
-    const interval = setInterval(() => { setLocationTick(value => value + 1); refreshLocation(); }, LOCATION_POLL_MS);
-    return () => { cancelled = true; clearInterval(interval); };
+      // A quick first answer (a recent or approximate location) while the precise one arrives.
+      Geolocation.getCurrentPosition(
+        position => { if (!cancelled) setDevicePosition(current => current ?? toCoordinates(position)); },
+        () => {},
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 15000 },
+      );
+      watchId = Geolocation.watchPosition(
+        position => { if (!cancelled) { setDevicePosition(toCoordinates(position)); setLocationPermissionDenied(false); } },
+        // One failed reading keeps the last good one; it simply expires after 30 seconds.
+        error => { if (!cancelled && error.code === 1) { setLocationPermissionDenied(true); setDevicePosition(null); } },
+        { enableHighAccuracy: true, distanceFilter: 0, interval: 2000, fastestInterval: 1000, maximumAge: 5000 },
+      );
+    })();
+    const interval = setInterval(() => setLocationTick(value => value + 1), LOCATION_TICK_MS);
+    return () => { cancelled = true; clearInterval(interval); if (watchId != null) Geolocation.clearWatch(watchId); };
   }, []);
+
+  // When a button is tapped: the location already on screen if it is
+  // recent, otherwise a new one (so the tap doesn't wait for nothing).
+  const positionForRequest = async () => (isFresh(devicePosition) ? devicePosition : getCurrentPosition());
 
   const requestDropOff = async (child: Child) => {
     if (!token) return;
     setMessage('');
     try {
-      const current = await getCurrentPosition();
+      const current = await positionForRequest();
       if (!current || !isWithinGeofence(current, child)) throw new Error('You must be at the school location to drop off.');
       await api.requestDropOff(token, child.id, { latitude: current.lat, longitude: current.lon }); setChildren(await api.myStudents(token));
     }
@@ -130,7 +159,7 @@ export function DropoffPickupScreen() {
   };
   const submitPickUp = async (pin: string) => {
     if (!token || !pinFor) return;
-    const current = await getCurrentPosition();
+    const current = await positionForRequest();
     if (!current || !isWithinGeofence(current, pinFor)) throw new Error('You must be at the school location to pick up.');
     if (!hasPin) { await api.createPin(token, pin); setHasPin(true); }
     try {
