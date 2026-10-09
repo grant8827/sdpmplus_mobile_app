@@ -1,5 +1,5 @@
 module.exports = {
-  preset: '@react-native/jest-preset',
+  preset: 'react-native',
   setupFiles: ['react-native-gesture-handler/jestSetup'],
   // These ship untranspiled ESM and need to go through Babel like RN itself does.
   transformIgnorePatterns: [
@@ -12,6 +12,8 @@ module.exports = {
         'react-native-screens',
         'react-native-safe-area-context',
         'react-native-encrypted-storage',
+        'react-native-image-picker',
+        '@react-native-community/geolocation',
       ].join('|') +
       ')/)',
   ],

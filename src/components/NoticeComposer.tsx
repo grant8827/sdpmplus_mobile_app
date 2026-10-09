@@ -1,56 +1,80 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dropdown } from './Dropdown';
 
-export interface TargetOption {
+export interface ParentOption {
   id: string;
   label: string;
 }
 
+export type NoticeTarget = { type: 'ALL' } | { type: 'PARENT'; parentUserId: string };
+
 interface NoticeComposerProps {
-  /** Selectable audiences, e.g. "All Class Parents" plus individual parents (SDP-8), or omitted entirely for a schoolwide-only broadcast (SDP-11). */
-  targetOptions: TargetOption[];
-  defaultTargetId: string;
-  onSend: (targetId: string, title: string, body: string) => void;
+  /** Label for the "everyone" chip, e.g. "All Class Parents" or "All School Parents". */
+  allLabel: string;
+  /** Real parents to offer individually via a dropdown. Omitted (or empty) for a broadcast-only composer with no per-parent targeting. */
+  parentOptions?: ParentOption[];
+  onSend: (target: NoticeTarget, title: string, body: string) => void;
   sendLabel?: string;
 }
 
-/** Shared composer UI backing both SDP-8 (teacher targeted notices) and SDP-11 (admin broadcast). */
+/** Shared composer UI backing both the teacher's targeted notices and the admin's broadcast. */
 export function NoticeComposer({
-  targetOptions,
-  defaultTargetId,
+  allLabel,
+  parentOptions = [],
   onSend,
   sendLabel = 'Send Notice',
 }: NoticeComposerProps) {
-  const [target, setTarget] = useState(defaultTargetId);
+  const [mode, setMode] = useState<'ALL' | 'PARENT'>('ALL');
+  const [parentId, setParentId] = useState(parentOptions[0]?.id ?? '');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
 
+  // parentOptions usually arrives after an async fetch, past this
+  // component's first render — re-sync whenever the list changes and
+  // the current selection is no longer (or not yet) valid.
+  useEffect(() => {
+    if (!parentOptions.some(option => option.id === parentId)) {
+      setParentId(parentOptions[0]?.id ?? '');
+    }
+  }, [parentOptions]);
+
   const handleSend = () => {
     if (!title.trim() || !body.trim()) return;
-    onSend(target, title.trim(), body.trim());
+    if (mode === 'PARENT' && !parentId) return;
+    onSend(mode === 'ALL' ? { type: 'ALL' } : { type: 'PARENT', parentUserId: parentId }, title.trim(), body.trim());
     setTitle('');
     setBody('');
-    setTarget(defaultTargetId);
+    setMode('ALL');
   };
 
   return (
     <View style={styles.card}>
-      {targetOptions.length > 1 && (
+      {parentOptions.length > 0 && (
         <>
           <Text style={styles.fieldLabel}>Send to</Text>
           <View style={styles.targetRow}>
-            {targetOptions.map(option => (
-              <TouchableOpacity
-                key={option.id}
-                style={[styles.targetChip, target === option.id && styles.targetChipActive]}
-                onPress={() => setTarget(option.id)}
-              >
-                <Text style={target === option.id ? styles.targetChipTextActive : styles.targetChipText}>
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity
+              style={[styles.targetChip, mode === 'ALL' && styles.targetChipActive]}
+              onPress={() => setMode('ALL')}
+            >
+              <Text style={mode === 'ALL' ? styles.targetChipTextActive : styles.targetChipText}>{allLabel}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.targetChip, mode === 'PARENT' && styles.targetChipActive]}
+              onPress={() => setMode('PARENT')}
+            >
+              <Text style={mode === 'PARENT' ? styles.targetChipTextActive : styles.targetChipText}>One Parent</Text>
+            </TouchableOpacity>
           </View>
+          {mode === 'PARENT' && (
+            <Dropdown
+              label="Parent"
+              options={parentOptions.map(option => ({ label: option.label, value: option.id }))}
+              value={parentId}
+              onChange={setParentId}
+            />
+          )}
         </>
       )}
 
@@ -96,8 +120,8 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
   },
   targetChipActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    backgroundColor: '#1976D2',
+    borderColor: '#1976D2',
   },
   targetChipText: {
     color: '#374151',
@@ -108,7 +132,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   input: {
-    backgroundColor: '#F5F6F8',
+    backgroundColor: '#F4F8FC',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E4E9',
@@ -120,7 +144,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   sendButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#1976D2',
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',

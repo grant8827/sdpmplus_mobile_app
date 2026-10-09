@@ -1,84 +1,53 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../../components/Screen';
+import { Avatar, Banner, Card, EmptyText, Pill } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
-import { mockAttendance, mockChildren } from '../../mocks/mockData';
-import { realtimeService } from '../../services/realtime';
-import type { AttendanceRecord, DailyAttendanceStatus } from '../../types';
-
-const STATUS_COLOR: Record<DailyAttendanceStatus, string> = {
-  PRESENT: '#16A34A',
-  ABSENT: '#DC2626',
-  PENDING: '#9CA3AF',
-};
-
-const today = new Date().toISOString().slice(0, 10);
+import { api, type RosterStudent, type TeacherClass } from '../../services/api';
 
 /**
- * SDP-8: Teacher Tab 2 - Class Roster (attendance view half of the
- * issue). See ComposeNoticeScreen.tsx for the targeted-notices half.
+ * Teacher Class tab — same as the website's: who's in the classroom the
+ * teacher was assigned to, and each student's enrollment status (active
+ * or suspended, set by an admin; read-only here). Daily attendance is
+ * marked on the Attendance tab.
  */
 export function ClassRosterScreen() {
-  const { user } = useAuth();
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>(mockAttendance);
-
-  const roster = useMemo(
-    () => mockChildren.filter(c => c.teacherId === user?.id),
-    [user?.id],
-  );
+  const { token, user } = useAuth();
+  const [myClass, setMyClass] = useState<TeacherClass | null>(null);
+  const [students, setStudents] = useState<RosterStudent[]>([]);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
-    return realtimeService.on('attendance:updated', record => {
-      setAttendance(prev => {
-        const others = prev.filter(
-          r => !(r.childId === record.childId && r.date === record.date),
-        );
-        return [...others, record];
-      });
-    });
-  }, []);
+    if (!token) return;
+    api.teacherClass(token).then(setMyClass).catch(() => {});
+    api.teacherStudents(token).then(setStudents).catch(error => setMessage(error.message));
+  }, [token]);
 
-  const statusFor = (childId: string): DailyAttendanceStatus =>
-    attendance.find(a => a.childId === childId && a.date === today)?.status ?? 'PENDING';
+  const subtitle = myClass
+    ? [`Grade ${myClass.gradeName}`, myClass.roomName, user?.fullName].filter(Boolean).join(' · ')
+    : "You haven't been assigned to a classroom yet. Ask your admin to set it in Faculty.";
 
   return (
-    <Screen title="Class Roster" subtitle="Today's attendance for your class.">
-      {roster.map(child => (
-        <View key={child.id} style={styles.card}>
-          <Text style={styles.childName}>{child.fullName}</Text>
-          <View style={[styles.statusPill, { backgroundColor: STATUS_COLOR[statusFor(child.id)] }]}>
-            <Text style={styles.statusText}>{statusFor(child.id)}</Text>
-          </View>
-        </View>
-      ))}
+    <Screen title={myClass?.name ?? 'Class'} subtitle={subtitle}>
+      <Banner text={message} />
+      {students.length === 0 ? <EmptyText>No students in this class yet.</EmptyText> : (
+        <Card style={styles.list}>
+          {students.map((student, index) => (
+            <View key={student.id} style={[styles.row, index > 0 && styles.divider]}>
+              <Avatar uri={student.photoUrl} name={student.fullName} size={36} />
+              <Text style={styles.name}>{student.fullName}</Text>
+              <Pill label={student.status === 'SUSPENDED' ? 'Suspended' : 'Active'} tone={student.status === 'SUSPENDED' ? 'amber' : 'green'} />
+            </View>
+          ))}
+        </Card>
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E4E9',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  childName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1A1D23',
-  },
-  statusPill: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  statusText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  list: { paddingVertical: 4, gap: 0 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  divider: { borderTopWidth: 1, borderTopColor: '#EEF0F3' },
+  name: { flex: 1, fontSize: 15, fontWeight: '600', color: '#374151' },
 });

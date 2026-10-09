@@ -1,68 +1,148 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { PermissionsAndroid, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Geolocation from '@react-native-community/geolocation';
 import { Screen } from '../../components/Screen';
 import { useAuth } from '../../context/AuthContext';
-import { mockChildren } from '../../mocks/mockData';
-import { realtimeService } from '../../services/realtime';
-import type { Child, QueueItem } from '../../types';
-import { CHILD_STATUS_COLOR, CHILD_STATUS_LABEL } from '../../utils/childStatus';
+import type { Child } from '../../types';
+import { CHILD_STATUS_COLOR, CHILD_STATUS_LABEL, CHILD_STATUS_TEXT_COLOR } from '../../utils/childStatus';
+import { api, ApiError } from '../../services/api';
+import { PinModal } from '../../components/PinModal';
+import { hasGeofence, isWithinGeofence, type Coordinates } from '../../utils/geofence';
+
+const POLL_MS = 4000;
+// GPS fixes are far more expensive (battery/time) than the plain API poll
+// above, so they refresh on their own, much slower, interval.
+const LOCATION_POLL_MS = 5000;
+
+async function requestLocationPermission(): Promise<boolean> {
+  // iOS: calling Geolocation.getCurrentPosition triggers the system
+  // permission prompt itself (backed by NSLocationWhenInUseUsageDescription
+  // in Info.plist) — no separate request call needed there. Android
+  // requires the app to drive the runtime permission dialog explicitly.
+  if (Platform.OS !== 'android') return true;
+  const granted = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    {
+      title: 'Location Permission',
+      message: "Used to confirm you're at school before enabling drop-off and pick-up.",
+      buttonPositive: 'OK',
+    },
+  );
+  return granted === PermissionsAndroid.RESULTS.GRANTED;
+}
+
+function getCurrentPosition(): Promise<Coordinates | null> {
+  return new Promise(resolve => {
+    Geolocation.getCurrentPosition(
+      position => resolve({ lat: position.coords.latitude, lon: position.coords.longitude, accuracy: position.coords.accuracy, timestamp: Date.now() }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 },
+    );
+  });
+}
+
+/**
+ * Whether a child's drop-off/pick-up should be geofence-blocked right now.
+ * A campus with no coordinates yet isn't gated at all (today's
+ * status-only behavior, so schools that haven't set an address yet
+ * aren't broken by this). Otherwise, no device position yet (still
+ * loading, or permission denied) fails CLOSED — the buttons stay
+ * disabled rather than silently allowing the action, matching the
+ * safety intent behind gating in the first place.
+ */
+function isGeofenceBlocked(child: Child, position: Coordinates | null): boolean {
+  if (!hasGeofence(child)) return true;
+  if (!position) return true;
+  return !isWithinGeofence(position, child);
+}
+
+function geofenceMessage(child: Child, position: Coordinates | null, permissionDenied: boolean): string | null {
+  if (!isGeofenceBlocked(child, position)) return null;
+  if (!hasGeofence(child)) return 'School location is not configured yet. Ask the administrator to save the campus address.';
+  if (permissionDenied) return 'Enable Location in Settings to drop off or pick up.';
+  if (!position) return 'Getting your location…';
+  return 'Get closer to campus to drop off or pick up.';
+}
 
 /**
  * SDP-3: Parent Tab 1 - Drop-off & Pick-up Screen.
  *
- * TODO once backend exists:
- * - Replace mockChildren with a fetch scoped to the logged-in parent.
- * - (Optional/Geofence AC) gate the buttons on GPS proximity to the
- *   school zone — not implemented here pending scope confirmation.
+ * Backed by the real backend: requesting a drop-off/pick-up hits
+ * queue_items directly, and this polls /me/students so a teacher's
+ * (or admin's) approval — from any device, mobile or web — shows up
+ * here without a manual refresh. No websocket transport yet, hence
+ * polling.
  */
 export function DropoffPickupScreen() {
-  const { user } = useAuth();
-  const [children, setChildren] = useState<Child[]>(() =>
-    mockChildren.filter(c => c.parentId === user?.id),
-  );
+  const { token } = useAuth();
+  const [children, setChildren] = useState<Child[]>([]);
+  const [message, setMessage] = useState('');
+  const [hasPin, setHasPin] = useState(true);
+  const [pinFor, setPinFor] = useState<Child | null>(null);
 
-  // Reflect teacher approvals back onto this screen in real time.
   useEffect(() => {
-    return realtimeService.on('queue:request-approved', ({ childId }) => {
-      setChildren(prev =>
-        prev.map(c => {
-          if (c.id !== childId) return c;
-          if (c.status === 'DROPOFF_REQUESTED') return { ...c, status: 'PRESENT' };
-          if (c.status === 'PICKUP_REQUESTED') return { ...c, status: 'PICKED_UP' };
-          return c;
-        }),
-      );
-    });
+    if (token) api.myPin(token).then(result => setHasPin(result.hasPin)).catch(() => {});
+  }, [token]);
+  const [devicePosition, setDevicePosition] = useState<Coordinates | null>(null);
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
+  const [, setLocationTick] = useState(0);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    const load = () => api.myStudents(token).then(next => { if (!cancelled) setChildren(next); }).catch(() => {});
+    load();
+    const interval = setInterval(load, POLL_MS);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [token]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshLocation = async () => {
+      const granted = await requestLocationPermission();
+      if (cancelled) return;
+      setLocationPermissionDenied(!granted);
+      if (!granted) { setDevicePosition(null); return; }
+      const position = await getCurrentPosition();
+      if (!cancelled) setDevicePosition(position);
+    };
+    refreshLocation();
+    const interval = setInterval(() => { setLocationTick(value => value + 1); refreshLocation(); }, LOCATION_POLL_MS);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  const requestDropOff = (child: Child) => {
-    setChildren(prev =>
-      prev.map(c => (c.id === child.id ? { ...c, status: 'DROPOFF_REQUESTED' } : c)),
-    );
-    const queueItem: QueueItem = {
-      id: `${child.id}-dropoff-${Date.now()}`,
-      childId: child.id,
-      childName: child.fullName,
-      parentName: user?.fullName ?? 'Parent',
-      requestType: 'DROP_OFF',
-      requestedAt: new Date().toISOString(),
-    };
-    realtimeService.emit('queue:new-request', queueItem);
+  const requestDropOff = async (child: Child) => {
+    if (!token) return;
+    setMessage('');
+    try {
+      const current = await getCurrentPosition();
+      if (!current || !isWithinGeofence(current, child)) throw new Error('You must be at the school location to drop off.');
+      await api.requestDropOff(token, child.id, { latitude: current.lat, longitude: current.lon }); setChildren(await api.myStudents(token));
+    }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Could not submit drop-off'); }
   };
 
-  const requestPickUp = (child: Child) => {
-    setChildren(prev =>
-      prev.map(c => (c.id === child.id ? { ...c, status: 'PICKUP_REQUESTED' } : c)),
-    );
-    const queueItem: QueueItem = {
-      id: `${child.id}-pickup-${Date.now()}`,
-      childId: child.id,
-      childName: child.fullName,
-      parentName: user?.fullName ?? 'Parent',
-      requestType: 'PICK_UP',
-      requestedAt: new Date().toISOString(),
-    };
-    realtimeService.emit('queue:new-request', queueItem);
+  // Pick Up asks for the parent's pickup PIN first (PinModal): "create"
+  // the first time, "enter" after that. The request is only sent with it.
+  const startPickUp = (child: Child) => {
+    setMessage('');
+    setPinFor(child);
+  };
+  const submitPickUp = async (pin: string) => {
+    if (!token || !pinFor) return;
+    const current = await getCurrentPosition();
+    if (!current || !isWithinGeofence(current, pinFor)) throw new Error('You must be at the school location to pick up.');
+    if (!hasPin) { await api.createPin(token, pin); setHasPin(true); }
+    try {
+      await api.requestPickUp(token, pinFor.id, { latitude: current.lat, longitude: current.lon }, pin);
+    } catch (error) {
+      // The PIN was removed elsewhere (or never set): ask them to create one.
+      if (error instanceof ApiError && error.code === 'PIN_NOT_SET') setHasPin(false);
+      throw error;
+    }
+    setPinFor(null);
+    setMessage(`Pickup requested for ${pinFor.fullName}.`);
+    setChildren(await api.myStudents(token));
   };
 
   return (
@@ -70,58 +150,87 @@ export function DropoffPickupScreen() {
       title="Drop-off & Pick-up"
       subtitle="Alert your child's teacher when you arrive."
     >
+      {message ? <Text style={styles.message}>{message}</Text> : null}
       {children.length === 0 ? (
         <Text style={styles.empty}>No children linked to this account yet.</Text>
       ) : (
-        children.map(child => (
-          <View key={child.id} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.childName}>{child.fullName}</Text>
-              <View
-                style={[
-                  styles.statusPill,
-                  { backgroundColor: CHILD_STATUS_COLOR[child.status] },
-                ]}
-              >
-                <Text style={styles.statusText}>
-                  {CHILD_STATUS_LABEL[child.status]}
-                </Text>
+        children.map(child => {
+          const dropOffStatusOk = child.status === 'AT_HOME';
+          const pickUpStatusOk = child.status === 'PRESENT';
+          const geofenceBlocked = isGeofenceBlocked(child, devicePosition);
+          // Only worth explaining the geofence when it's the actual reason
+          // an otherwise-eligible action is unavailable — a child that's
+          // already PICKED_UP shouldn't show a location message too.
+          const showGeofenceMessage = (dropOffStatusOk || pickUpStatusOk) && geofenceBlocked;
+
+          return (
+            <View key={child.id} style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.childName}>{child.fullName}</Text>
+                <View
+                  style={[
+                    styles.statusPill,
+                    { backgroundColor: CHILD_STATUS_COLOR[child.status] },
+                  ]}
+                >
+                  <Text style={[styles.statusText, { color: CHILD_STATUS_TEXT_COLOR[child.status] }]}>
+                    {CHILD_STATUS_LABEL[child.status]}
+                  </Text>
+                </View>
               </View>
-            </View>
 
-            <View style={styles.actions}>
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  styles.dropOffButton,
-                  child.status !== 'AT_HOME' && styles.disabledButton,
-                ]}
-                disabled={child.status !== 'AT_HOME'}
-                onPress={() => requestDropOff(child)}
-              >
-                <Text style={styles.actionText}>Drop Off</Text>
-              </TouchableOpacity>
+              <View style={styles.actions}>
+                <TouchableOpacity
+                  style={[
+                    styles.actionButton,
+                    styles.dropOffButton,
+                    (!dropOffStatusOk || geofenceBlocked) && styles.disabledButton,
+                  ]}
+                  disabled={!dropOffStatusOk || geofenceBlocked}
+                  onPress={() => requestDropOff(child)}
+                >
+                  <Text style={styles.actionText}>Drop Off</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  styles.pickUpButton,
-                  child.status !== 'PRESENT' && styles.disabledButton,
-                ]}
-                disabled={child.status !== 'PRESENT'}
-                onPress={() => requestPickUp(child)}
-              >
-                <Text style={styles.actionText}>Pick Up</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.actionButton,
+                    styles.pickUpButton,
+                    (!pickUpStatusOk || geofenceBlocked) && styles.disabledButton,
+                  ]}
+                  disabled={!pickUpStatusOk || geofenceBlocked}
+                  onPress={() => startPickUp(child)}
+                >
+                  <Text style={styles.actionText}>Pick Up</Text>
+                </TouchableOpacity>
+              </View>
+
+              {showGeofenceMessage && (
+                <Text style={styles.geofenceMessage}>
+                  {geofenceMessage(child, devicePosition, locationPermissionDenied)}
+                </Text>
+              )}
             </View>
-          </View>
-        ))
+          );
+        })
       )}
+      <PinModal
+        visible={pinFor !== null}
+        mode={hasPin ? 'enter' : 'create'}
+        childName={pinFor?.fullName ?? ''}
+        onSubmit={submitPickUp}
+        onForgot={async () => (await api.forgotPin(token!)).message}
+        onClose={() => setPinFor(null)}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  message: {
+    color: '#DC2626',
+    fontSize: 13,
+  },
   empty: {
     color: '#6B7280',
     fontSize: 14,
@@ -142,7 +251,7 @@ const styles = StyleSheet.create({
   childName: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#1A1D23',
+    color: '#374151',
   },
   statusPill: {
     borderRadius: 999,
@@ -165,10 +274,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dropOffButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#1976D2',
   },
   pickUpButton: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#123B6D',
   },
   disabledButton: {
     backgroundColor: '#D1D5DB',
@@ -176,5 +285,11 @@ const styles = StyleSheet.create({
   actionText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  geofenceMessage: {
+    marginTop: 10,
+    color: '#6B7280',
+    fontSize: 12,
+    textAlign: 'center',
   },
 });

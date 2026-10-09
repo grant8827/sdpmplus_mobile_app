@@ -24,7 +24,7 @@ export function Screen({ title, subtitle, children }: ScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F6F8',
+    backgroundColor: '#F4F8FC',
   },
   content: {
     padding: 16,
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1A1D23',
+    color: '#374151',
   },
   subtitle: {
     fontSize: 14,

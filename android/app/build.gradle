@@ -25,7 +25,14 @@ react {
 
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
-    // nodeExecutableAndArgs = ["node"]
+    //   Pinned to an absolute path: Gradle shells out via a plain ProcessBuilder
+    //   (no shell, no PATH lookup the way a terminal does it), and when Gradle
+    //   is launched from Android Studio's GUI rather than a terminal, its
+    //   inherited PATH is macOS's minimal launchd default and doesn't include
+    //   /usr/local/bin — so bare "node" fails with "Cannot run program 'node':
+    //   No such file or directory" on codegen tasks. Run `which node` if this
+    //   path ever stops matching (e.g. after switching Node versions/managers).
+    nodeExecutableAndArgs = ["/usr/local/bin/node"]
     //
     //   The command to run when bundling. By default is 'bundle'
     // bundleCommand = "ram-bundle"

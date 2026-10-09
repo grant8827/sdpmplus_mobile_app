@@ -10,7 +10,29 @@ export interface User {
   fullName: string;
   email: string;
   role: Role;
+  /**
+   * Per-school roles from the login response — 'school_admin', 'staff'
+   * (front desk), 'teacher', 'parent', 'platform_super_admin', or
+   * 'district_admin' (one entry per school in their district).
+   */
+  memberships?: { schoolId: string; role: string; schoolName?: string; districtName?: string | null }[];
+  /** Set for platform administrators, who use the website (see PlatformOnWebScreen). */
+  platform?: { role: string; permissions: string[] } | null;
 }
+
+/**
+ * What sign-in returns when the password was right but a second step is
+ * owed: enter an authenticator code (mfaRequired), or — for an account
+ * that must use two-step verification and hasn't set it up — enroll
+ * first (mfaSetupRequired). mfaToken identifies this half-finished sign-in.
+ */
+export interface MfaChallenge {
+  mfaRequired?: boolean;
+  mfaSetupRequired?: boolean;
+  mfaToken: string;
+}
+export type LoginResult = AuthSession | MfaChallenge;
+export const isMfaChallenge = (result: LoginResult): result is MfaChallenge => 'mfaToken' in result;
 
 export interface AuthSession {
   token: string;
@@ -30,9 +52,18 @@ export type ChildStatus =
 export interface Child {
   id: string;
   fullName: string;
-  parentId: string;
+  photoUrl?: string;
+  parentId?: string;
   teacherId: string;
+  gradeName?: string;
+  className?: string;
   status: ChildStatus;
+  daycare?: boolean;
+  /** The child's campus location — drives the drop-off/pick-up geofence (SDP-3 follow-up). Null/undefined lat/long means no geofence is configured for that campus yet. */
+  campusId?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  geofenceRadius?: number | null;
 }
 
 export interface Parent {
@@ -67,7 +98,10 @@ export interface QueueItem {
   id: string;
   childId: string;
   childName: string;
+  childPhotoUrl?: string;
+  className?: string;
   parentName: string;
+  teacherId: string;
   requestType: QueueRequestType;
   requestedAt: string; // ISO timestamp
 }
@@ -77,17 +111,7 @@ export interface Notice {
   title: string;
   body: string;
   senderName: string;
-  senderRole: Extract<Role, 'admin' | 'teacher'>;
+  senderRole: Role;
   createdAt: string; // ISO timestamp
-  /** undefined/'ALL' = school-wide; otherwise a specific teacher's class or parent. */
-  targetTeacherId?: string;
-  targetParentId?: string;
-  read?: boolean;
-}
-
-export interface AdminOverviewMetrics {
-  totalEnrolledStudents: number;
-  activeTeachers: number;
-  presentToday: number;
-  pendingRequests: number;
+  read: boolean;
 }

@@ -1,129 +1,67 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Screen } from '../../components/Screen';
-import { realtimeService } from '../../services/realtime';
+import { useAuth } from '../../context/AuthContext';
+import { QueueList } from '../../components/QueueList';
+import { SubTabs } from '../../components/SubTabs';
+import { api } from '../../services/api';
 import type { QueueItem } from '../../types';
 
+type Tab = 'DROP_OFF' | 'PICK_UP';
+const POLL_MS = 4000;
+
 /**
- * SDP-6: Teacher Tab 1 - Live Drop-off & Pick-up Queue with Green Highlight.
- * SDP-7: Approving a drop-off auto-marks attendance and syncs the
- * parent's Class tab — done here by emitting `attendance:updated` and
- * `queue:request-approved` for the same action, so both parent
- * screens (SDP-3, SDP-4) stay in sync without a page reload.
+ * SDP-6: Teacher Tab 1 - Live Drop-off & Pick-up Queue, split into
+ * Drop-off / Pick-up tabs (same split as Admin's queue, but scoped to
+ * this teacher's own class — see admin/LiveQueueScreen for the
+ * all-classes view).
+ * SDP-7: Approving a drop-off auto-marks attendance (via pickup_status)
+ * on the backend.
  *
- * TODO: scope the incoming feed to this teacher's own roster once the
- * backend attaches a teacherId to each request.
+ * Backed by the real queue_items table now, so a request a parent
+ * submits — from the app or the website — shows up here. Polls rather
+ * than pushing, since there's no websocket/live-update transport yet.
  */
 export function LiveQueueScreen() {
+  const { token } = useAuth();
+  const [tab, setTab] = useState<Tab>('DROP_OFF');
   const [queue, setQueue] = useState<QueueItem[]>([]);
 
   useEffect(() => {
-    return realtimeService.on('queue:new-request', item => {
-      setQueue(prev => [item, ...prev]);
-    });
-  }, []);
+    if (!token) return;
+    let cancelled = false;
+    const load = () => api.teacherQueue(token).then(next => { if (!cancelled) setQueue(next); }).catch(() => {});
+    load();
+    const interval = setInterval(load, POLL_MS);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [token]);
 
-  const approve = (item: QueueItem) => {
-    setQueue(prev => prev.filter(q => q.id !== item.id));
-
-    realtimeService.emit('queue:request-approved', {
-      queueItemId: item.id,
-      childId: item.childId,
-    });
-
-    if (item.requestType === 'DROP_OFF') {
-      realtimeService.emit('attendance:updated', {
-        childId: item.childId,
-        date: new Date().toISOString().slice(0, 10),
-        status: 'PRESENT',
-      });
-    }
+  // Errors propagate to QueueList, which shows them on the card; the
+  // queue is refreshed either way.
+  const approve = async (item: QueueItem) => {
+    if (!token) return;
+    try { await api.approveQueueItem(token, item.id); }
+    finally { api.teacherQueue(token).then(setQueue).catch(() => {}); }
   };
 
-  return (
-    <Screen title="Live Queue" subtitle="Incoming drop-off and pick-up requests.">
-      {queue.length === 0 ? (
-        <Text style={styles.empty}>No pending requests.</Text>
-      ) : (
-        queue.map(item => (
-          <View
-            key={item.id}
-            style={[
-              styles.card,
-              item.requestType === 'PICK_UP' && styles.pickUpHighlight,
-            ]}
-          >
-            <View style={styles.cardHeader}>
-              <Text style={styles.childName}>{item.childName}</Text>
-              <Text style={styles.requestType}>
-                {item.requestType === 'DROP_OFF' ? 'Drop-off' : 'Pick-up'}
-              </Text>
-            </View>
-            <Text style={styles.parentName}>Parent: {item.parentName}</Text>
-            <Text style={styles.timestamp}>
-              {new Date(item.requestedAt).toLocaleTimeString()}
-            </Text>
+  const decline = async (item: QueueItem) => {
+    if (!token) return;
+    try { await api.declineQueueItem(token, item.id); }
+    finally { api.teacherQueue(token).then(setQueue).catch(() => {}); }
+  };
 
-            <TouchableOpacity style={styles.approveButton} onPress={() => approve(item)}>
-              <Text style={styles.approveText}>Approve / Confirm</Text>
-            </TouchableOpacity>
-          </View>
-        ))
-      )}
+  const visible = queue.filter(item => item.requestType === tab);
+
+  return (
+    <Screen title="Live Queue" subtitle="Incoming drop-off and pick-up requests for your class.">
+      <SubTabs
+        tabs={[
+          { key: 'DROP_OFF', label: 'Drop-off' },
+          { key: 'PICK_UP', label: 'Pick-up' },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+      <QueueList items={visible} onApprove={approve} onDecline={decline} />
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  empty: {
-    color: '#6B7280',
-    fontSize: 14,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E4E9',
-  },
-  // SDP-6 AC: pick-up requests MUST highlight bright green.
-  pickUpHighlight: {
-    backgroundColor: '#22C55E',
-    borderColor: '#16A34A',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  childName: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1A1D23',
-  },
-  requestType: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1A1D23',
-  },
-  parentName: {
-    fontSize: 14,
-    color: '#374151',
-    marginTop: 4,
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-    marginBottom: 12,
-  },
-  approveButton: {
-    backgroundColor: '#111827',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  approveText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-});

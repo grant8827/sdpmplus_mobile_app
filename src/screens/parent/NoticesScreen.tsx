@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     borderColor: '#E2E4E9',
   },
   cardUnread: {
-    borderColor: '#2563EB',
+    borderColor: '#1976D2',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -60,14 +60,14 @@ const styles = StyleSheet.create({
   noticeTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A1D23',
+    color: '#374151',
     flexShrink: 1,
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#1976D2',
   },
   noticeBody: {
     fontSize: 14,

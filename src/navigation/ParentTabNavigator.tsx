@@ -1,40 +1,63 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { PermissionsAndroid, Platform } from 'react-native';
+import Geolocation from '@react-native-community/geolocation';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NoticesProvider, useNotices } from '../context/NoticesContext';
-import { LogoutButton } from './LogoutButton';
+import { HomeScreen } from '../screens/parent/HomeScreen';
 import { DropoffPickupScreen } from '../screens/parent/DropoffPickupScreen';
-import { ClassAttendanceScreen } from '../screens/parent/ClassAttendanceScreen';
 import { NoticesScreen } from '../screens/parent/NoticesScreen';
+import { MenuStackNavigator } from './MenuStackNavigator';
+import { TabIcon } from '../components/TabIcon';
 
 export type ParentTabParamList = {
+  Home: undefined;
   DropoffPickup: undefined;
-  Class: undefined;
   Notices: undefined;
+  Menu: undefined;
 };
 
 const Tab = createBottomTabNavigator<ParentTabParamList>();
 
-const renderLogoutButton = () => <LogoutButton />;
-
-/** SDP-3 / SDP-4 / SDP-5: Parent's three bottom tabs. */
+/** SDP-3 / SDP-4 / SDP-5: Parent's bottom tabs — Home, Dropoff/Pickup, Notices, and Menu (Profile/Change Password/Log Out). */
 function ParentTabs() {
   const { unreadCount } = useNotices();
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION, {
+        title: 'Location Permission',
+        message: 'Enable location to use drop-off and pick-up when you arrive at school.',
+        buttonPositive: 'OK',
+      }).catch(() => {});
+    } else {
+      Geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    }
+  }, []);
 
   return (
-    <Tab.Navigator screenOptions={{ headerRight: renderLogoutButton }}>
+    <Tab.Navigator>
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ title: 'Home', tabBarIcon: ({ size, focused }) => <TabIcon emoji="🏠" size={size} focused={focused} /> }}
+      />
       <Tab.Screen
         name="DropoffPickup"
         component={DropoffPickupScreen}
-        options={{ title: 'Dropoff/Pickup' }}
+        options={{ title: 'Dropoff/Pickup', tabBarIcon: ({ size, focused }) => <TabIcon emoji="🚗" size={size} focused={focused} /> }}
       />
-      <Tab.Screen name="Class" component={ClassAttendanceScreen} options={{ title: 'Class' }} />
       <Tab.Screen
         name="Notices"
         component={NoticesScreen}
         options={{
           title: 'Notices',
           tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarIcon: ({ size, focused }) => <TabIcon emoji="🔔" size={size} focused={focused} />,
         }}
+      />
+      <Tab.Screen
+        name="Menu"
+        component={MenuStackNavigator}
+        options={{ title: 'Menu', headerShown: false, tabBarIcon: ({ size, focused }) => <TabIcon emoji="☰" size={size} focused={focused} /> }}
       />
     </Tab.Navigator>
   );

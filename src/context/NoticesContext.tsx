@@ -5,8 +5,8 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { mockNotices } from '../mocks/mockData';
-import { realtimeService } from '../services/realtime';
+import { useAuth } from './AuthContext';
+import { api } from '../services/api';
 import type { Notice } from '../types';
 
 interface NoticesContextValue {
@@ -17,25 +17,30 @@ interface NoticesContextValue {
 
 const NoticesContext = createContext<NoticesContextValue | undefined>(undefined);
 
+const POLL_MS = 4000;
+
 /**
- * Backs SDP-5 (Parent Notices feed + unread badge on the tab icon).
- * New notices arrive via the `notice:posted` real-time event, which
- * the Teacher composer (SDP-8) and Admin broadcast composer (SDP-11)
- * both emit.
+ * Backs the Parent Notices feed + unread badge on the tab icon. Backed
+ * by the real notices table now (was in-memory-only mock state that
+ * never synced across devices) — polls the same way the queue and
+ * attendance screens do, since there's no websocket transport.
  */
 export function NoticesProvider({ children }: { children: React.ReactNode }) {
-  const [notices, setNotices] = useState<Notice[]>(mockNotices);
+  const { token } = useAuth();
+  const [notices, setNotices] = useState<Notice[]>([]);
 
   useEffect(() => {
-    return realtimeService.on('notice:posted', notice => {
-      setNotices(prev => [notice, ...prev]);
-    });
-  }, []);
+    if (!token) return;
+    let cancelled = false;
+    const load = () => api.myNotices(token).then(next => { if (!cancelled) setNotices(next); }).catch(() => {});
+    load();
+    const interval = setInterval(load, POLL_MS);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [token]);
 
   const markRead = (noticeId: string) => {
-    setNotices(prev =>
-      prev.map(n => (n.id === noticeId ? { ...n, read: true } : n)),
-    );
+    setNotices(prev => prev.map(n => (n.id === noticeId ? { ...n, read: true } : n)));
+    if (token) api.markNoticeRead(token, noticeId).catch(() => {});
   };
 
   const value = useMemo<NoticesContextValue>(

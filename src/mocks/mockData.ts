@@ -1,5 +1,4 @@
 import type {
-  AdminOverviewMetrics,
   AttendanceRecord,
   Child,
   Notice,
@@ -99,15 +98,7 @@ export const mockNotices: Notice[] = [
     body: 'Please return signed permission slips by Wednesday.',
     senderName: 'Taylor Teacher',
     senderRole: 'teacher',
-    targetTeacherId: 'teacher-1',
     createdAt: new Date().toISOString(),
     read: false,
   },
 ];
-
-export const mockAdminMetrics: AdminOverviewMetrics = {
-  totalEnrolledStudents: mockChildren.length,
-  activeTeachers: mockTeachers.length,
-  presentToday: mockAttendance.filter(a => a.status === 'PRESENT').length,
-  pendingRequests: 0,
-};

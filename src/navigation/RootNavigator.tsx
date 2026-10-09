@@ -4,9 +4,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { LoginScreen } from '../screens/auth/LoginScreen';
+import { RegisterSchoolScreen } from '../screens/auth/RegisterSchoolScreen';
 import { ParentTabNavigator } from './ParentTabNavigator';
 import { TeacherTabNavigator } from './TeacherTabNavigator';
 import { AdminTabNavigator } from './AdminTabNavigator';
+import { PlatformOnWebScreen } from '../screens/shared/PlatformOnWebScreen';
 
 const AuthStack = createNativeStackNavigator();
 
@@ -32,7 +34,14 @@ export function RootNavigator() {
       {!user ? (
         <AuthStack.Navigator screenOptions={{ headerShown: false }}>
           <AuthStack.Screen name="Login" component={LoginScreen} />
+          <AuthStack.Screen
+            name="RegisterSchool"
+            component={RegisterSchoolScreen}
+          />
         </AuthStack.Navigator>
+      ) : user.platform && !user.memberships?.length ? (
+        // Platform administrators with no school of their own: website only.
+        <PlatformOnWebScreen />
       ) : user.role === 'parent' ? (
         <ParentTabNavigator />
       ) : user.role === 'teacher' ? (
