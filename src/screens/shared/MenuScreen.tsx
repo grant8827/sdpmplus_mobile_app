@@ -58,6 +58,7 @@ export function MenuScreen() {
           {canManageSchool && item('SchoolSetup', 'School Setup')}
           {canManageSchool && item('AuditLog', 'Audit Log')}
           {canManageSchool && item('DataPrivacy', 'Data & Privacy')}
+          {canManageSchool && item('Subscription', 'Subscription')}
         </>
       )}
 

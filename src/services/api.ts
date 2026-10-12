@@ -143,6 +143,17 @@ export const api = {
   declineQueueItem: (token: string, queueItemId: string) => request<void>(`/queue/${queueItemId}/decline`, { method: 'POST' }, token),
   adminOverview: (token: string) => request<AdminOverview>('/admin/overview', {}, token),
   adminSetup: (token: string) => request<AdminSetup>('/admin/setup', {}, token),
+  // A school administrator's Subscription page
+  mySubscription: (token: string) => request<SchoolSubscriptionView>('/admin/subscription', {}, token),
+  /** Pay by card (answers a Stripe page to open), or, when already paying by card, change plan there and then. */
+  subscriptionCheckout: (token: string, input: { planId: string; interval: BillingInterval; confirm: true }) =>
+    request<{ url?: string; changed?: boolean }>('/admin/subscription/checkout', { method: 'POST', body: JSON.stringify(input) }, token),
+  requestSubscriptionChange: (token: string, input: { type: 'CHANGE_PLAN' | 'CANCEL'; planId?: string; interval?: BillingInterval; note?: string; confirm: true }) =>
+    request<{ id: string }>('/admin/subscription/requests', { method: 'POST', body: JSON.stringify(input) }, token),
+  withdrawSubscriptionRequest: (token: string, requestId: string) => request<void>(`/admin/subscription/requests/${requestId}`, { method: 'DELETE' }, token),
+  cancelPaidSubscription: (token: string, input: { confirm: true } | { resume: true }) =>
+    request<void>('/admin/subscription/cancel', { method: 'POST', body: JSON.stringify(input) }, token),
+  billingPortal: (token: string) => request<{ url: string }>('/admin/subscription/portal', { method: 'POST' }, token),
   /** The signed-in person's school: its name and logo (for the dashboard). */
   mySchool: (token: string) => request<SchoolBranding>('/me/school', {}, token),
   /** logoDataUrl: an image replaces the logo, '' removes it, omitted keeps it. */
@@ -240,6 +251,35 @@ export interface StoredAddressParts {
   state?: string | null;
   postalCode?: string | null;
   country?: string | null;
+}
+export type BillingInterval = 'MONTH' | 'YEAR';
+/** How full a school's plan is: NEAR = 80%+, CLOSE = 90%+, FULL = 100%. */
+export type CapacityLevel = 'OK' | 'NEAR' | 'CLOSE' | 'FULL';
+/** A plan sets a student limit (null = none) and prices; every plan has every feature. */
+export interface SchoolPlanOption {
+  id: string; name: string; description: string | null; currency: string; studentLimit: number | null; monthlyPriceCents: number | null;
+  annualPriceCents: number | null; customPricing: boolean; current: boolean; recommended: boolean; tooSmall: boolean;
+}
+export interface SubscriptionRequest {
+  id: string; type: 'CHANGE_PLAN' | 'CANCEL'; planId: string | null; planName: string | null; interval: BillingInterval | null; note: string | null;
+  status: 'OPEN' | 'APPROVED' | 'DECLINED' | 'WITHDRAWN'; requestedBy: string | null; resolvedBy: string | null; resolutionNote: string | null; createdAt: string; resolvedAt: string | null;
+}
+export interface SchoolInvoice {
+  id: string; number: string; description: string; amountCents: number; currency: string; status: 'DRAFT' | 'OPEN' | 'PAID' | 'VOID';
+  dueOn: string | null; paidAt: string | null; paidCents: number; overdue: boolean; hostedUrl: string | null;
+}
+export interface SchoolSubscriptionView {
+  subscription: {
+    status: 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'; planId: string; planName: string; studentLimit: number | null; customPricing: boolean;
+    interval: BillingInterval; priceCents: number | null; currency: string; startedOn: string; currentPeriodEnd: string | null;
+    trialEndsOn: string | null; trialDaysLeft: number | null; trialEnded: boolean; cancelAtPeriodEnd: boolean;
+  } | null;
+  activeStudents: number; studentLimit: number | null; remaining: number | null; percentUsed: number | null; level: CapacityLevel;
+  /** Why students can't be added right now, if the subscription has lapsed. */
+  lapsed: 'CANCELED' | 'TRIAL_ENDED' | 'PAYMENT_OVERDUE' | null;
+  /** onlinePayment: card payment is offered. paidOnline: this school already pays by card. */
+  onlinePayment: boolean; paidOnline: boolean;
+  plans: SchoolPlanOption[]; graceDays: number; openRequest: SubscriptionRequest | null; requests: SubscriptionRequest[]; invoices: SchoolInvoice[];
 }
 export interface SchoolBranding {
   id: string;

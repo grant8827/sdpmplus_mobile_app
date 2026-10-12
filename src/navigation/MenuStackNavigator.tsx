@@ -11,6 +11,7 @@ import { ClassesScreen } from '../screens/admin/ClassesScreen';
 import { SchoolSetupScreen } from '../screens/admin/SchoolSetupScreen';
 import { AuditLogScreen } from '../screens/admin/AuditLogScreen';
 import { DataPrivacyScreen } from '../screens/admin/DataPrivacyScreen';
+import { SubscriptionScreen } from '../screens/admin/SubscriptionScreen';
 import { DistrictOverviewScreen } from '../screens/admin/DistrictOverviewScreen';
 import { AttendanceScreen as ParentAttendanceScreen } from '../screens/parent/AttendanceScreen';
 import { AddGuardianScreen } from '../screens/parent/AddGuardianScreen';
@@ -27,6 +28,7 @@ export type MenuStackParamList = {
   SchoolSetup: undefined;
   AuditLog: undefined;
   DataPrivacy: undefined;
+  Subscription: undefined;
   District: undefined;
   Attendance: undefined;
   AddGuardian: undefined;
@@ -60,6 +62,7 @@ export function MenuStackNavigator() {
       <Stack.Screen name="SchoolSetup" component={SchoolSetupScreen} options={{ title: 'School Setup' }} />
       <Stack.Screen name="AuditLog" component={AuditLogScreen} options={{ title: 'Audit Log' }} />
       <Stack.Screen name="DataPrivacy" component={DataPrivacyScreen} options={{ title: 'Data & Privacy' }} />
+      <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ title: 'Subscription' }} />
       <Stack.Screen name="District" component={DistrictOverviewScreen} options={{ title: 'District' }} />
       <Stack.Screen name="Attendance" component={ParentAttendanceScreen} options={{ title: 'Attendance' }} />
       <Stack.Screen name="AddGuardian" component={AddGuardianScreen} options={{ title: 'Add Guardian' }} />
