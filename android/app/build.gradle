@@ -86,7 +86,7 @@ android {
 
     namespace "com.schooldropottpickup"
     defaultConfig {
-        applicationId "com.schooldropottpickup"
+        applicationId "com.sdpmplus"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

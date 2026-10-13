@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -13,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { MfaSignInStep } from '../../components/MfaSignInStep';
@@ -72,6 +74,21 @@ export function LoginScreen() {
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [resetBusy, setResetBusy] = useState(false);
 
+  // While the keypad is up, the feature list is hidden and the form is
+  // scrolled to the top of what's left, so the fields and the button
+  // stay above the keypad even on a small phone.
+  const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
+  const formY = useRef(0);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const ios = Platform.OS === 'ios';
+    const show = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardOpen(true));
+    const hide = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardOpen(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+  const showForm = () => scrollRef.current?.scrollTo({ y: Math.max(0, formY.current - 12), animated: true });
+
   const openForgot = () => {
     setForgotMode(true);
     setResetMessage(null);
@@ -114,11 +131,12 @@ export function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
+        ref={scrollRef}
         style={styles.flex}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 32 }]}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.hero}>
@@ -134,7 +152,7 @@ export function LoginScreen() {
           </Text>
         </View>
 
-        <View style={styles.featureList}>
+        {!keyboardOpen && <View style={styles.featureList}>
           {FEATURES.map(feature => (
             <View key={feature.title} style={styles.featureRow}>
               <Text style={styles.featureIcon}>{feature.icon}</Text>
@@ -144,8 +162,14 @@ export function LoginScreen() {
               </View>
             </View>
           ))}
-        </View>
+        </View>}
 
+        <View
+          onLayout={event => {
+            formY.current = event.nativeEvent.layout.y;
+            if (keyboardOpen) showForm();
+          }}
+        >
         {challenge ? (
           <View style={styles.formCard}>
             <MfaSignInStep
@@ -248,6 +272,7 @@ export function LoginScreen() {
           </TouchableOpacity>
         </View>
         )}
+        </View>
 
         <Text style={styles.footer}>
           Parent, Teacher, and Admin accounts all sign in here — you'll land on
@@ -271,7 +296,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 24,
-    paddingTop: 48,
     paddingBottom: 40,
   },
   hero: {

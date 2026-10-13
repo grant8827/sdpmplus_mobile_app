@@ -25,6 +25,6 @@ extensions.configure(com.facebook.react.ReactSettingsExtension){ ex ->
     )
     ex.autolinkLibrariesFromCommand(npxCommand, appRoot.asFile, autolinkInputs)
 }
-rootProject.name = 'schooldropottpickup'
+rootProject.name = 'sdpmplus'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')

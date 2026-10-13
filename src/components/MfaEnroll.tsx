@@ -74,7 +74,7 @@ export function MfaEnroll({ begin, confirm, onDone, onError }: {
 
 /** Shown once after setup: each code signs in once if the phone is lost. The server only keeps hashes. */
 export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
-  const share = () => Share.share({ message: `School Drop-off & Pick-up recovery codes (each works once):\n\n${codes.join('\n')}` }).catch(() => {});
+  const share = () => Share.share({ message: `SDPMPlus recovery codes (each works once):\n\n${codes.join('\n')}` }).catch(() => {});
   return (
     <View style={styles.column}>
       <Text style={styles.body}>

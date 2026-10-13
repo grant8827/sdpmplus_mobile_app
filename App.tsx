@@ -1,5 +1,5 @@
 /**
- * School Drop-off & Pick-up App
+ * SDPMPlus — School Drop-off & Pickup Management Plus
  * JIRA project SDP — see EPIC 1 (SDP-1, SDP-2) for the auth + real-time
  * foundation this root component wires together.
  *

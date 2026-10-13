@@ -1,5 +1,5 @@
 /**
- * Shared domain types for the School Drop-off & Pick-up app.
+ * Shared domain types for the SDPMPlus app.
  * Maps to JIRA project SDP — see EPIC 1-4 issue descriptions.
  */
 

@@ -184,7 +184,8 @@ export function DropoffPickupScreen() {
         <Text style={styles.empty}>No children linked to this account yet.</Text>
       ) : (
         children.map(child => {
-          const dropOffStatusOk = child.status === 'AT_HOME';
+          // A picked-up child counts as at home: the next drop-off starts from there.
+          const dropOffStatusOk = child.status === 'AT_HOME' || child.status === 'PICKED_UP';
           const pickUpStatusOk = child.status === 'PRESENT';
           const geofenceBlocked = isGeofenceBlocked(child, devicePosition);
           // Only worth explaining the geofence when it's the actual reason
