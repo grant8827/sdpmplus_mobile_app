@@ -48,7 +48,7 @@ export function PickupPinScreen() {
     catch (error) { setMessage(error instanceof Error ? error.message : 'Could not send the email'); }
   };
 
-  const pinField = { keyboardType: 'number-pad' as const, secureTextEntry: true, maxLength: 6, autoComplete: 'off' as const, textContentType: 'none' as const, style: styles.pin };
+  const pinField = { keyboardType: 'number-pad' as const, secureTextEntry: true, maxLength: 6, autoComplete: 'off' as const, textContentType: 'oneTimeCode' as const, style: styles.pin };
 
   return (
     <Screen title="Pickup PIN" subtitle="The 6-digit PIN you enter each time you request a pickup.">

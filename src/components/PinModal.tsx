@@ -8,6 +8,9 @@ import { digitsOnly, pinProblem } from '../utils/pin';
  * pickup PIN — or, the first time, create one (typed twice). "Forgot
  * PIN?" emails them a link to choose a new one. `onSubmit` rejects with
  * the server's message (wrong PIN, tries left, locked), shown here.
+ *
+ * The boxes are marked as one-time codes: two masked boxes in a row make
+ * iOS offer a "strong password", which stops the second one taking input.
  */
 export function PinModal({
   visible,
@@ -55,7 +58,7 @@ export function PinModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.backdrop} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.backdrop} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.sheet}>
           <Text style={styles.title}>{mode === 'create' ? 'Create your pickup PIN' : 'Enter your pickup PIN'}</Text>
           <Text style={styles.message}>
@@ -73,12 +76,12 @@ export function PinModal({
             maxLength={6}
             autoFocus
             autoComplete="off"
-            textContentType="none"
+            textContentType="oneTimeCode"
           />
           {mode === 'create' && (
             <>
               <Label>Type it again</Label>
-              <Input style={styles.pin} value={confirm} onChangeText={text => setConfirm(digitsOnly(text))} keyboardType="number-pad" secureTextEntry maxLength={6} autoComplete="off" textContentType="none" />
+              <Input style={styles.pin} value={confirm} onChangeText={text => setConfirm(digitsOnly(text))} keyboardType="number-pad" secureTextEntry maxLength={6} autoComplete="off" textContentType="oneTimeCode" />
             </>
           )}
           {error ? <Text style={styles.error}>{error}</Text> : null}
