@@ -2,23 +2,27 @@ import React, { useEffect } from 'react';
 import { PermissionsAndroid, Platform } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import { NoticesProvider, useNotices } from '../context/NoticesContext';
 import { HomeScreen } from '../screens/parent/HomeScreen';
 import { DropoffPickupScreen } from '../screens/parent/DropoffPickupScreen';
 import { NoticesScreen } from '../screens/parent/NoticesScreen';
-import { MenuStackNavigator } from './MenuStackNavigator';
-import { TabIcon } from '../components/TabIcon';
+import { MenuStackNavigator, type MenuStackParamList } from './MenuStackNavigator';
+import { tabIcon } from '../components/TabIcon';
 
 export type ParentTabParamList = {
   Home: undefined;
   DropoffPickup: undefined;
-  Notices: undefined;
-  Menu: undefined;
+  Messages: undefined;
+  Menu: NavigatorScreenParams<MenuStackParamList> | undefined;
 };
 
 const Tab = createBottomTabNavigator<ParentTabParamList>();
 
-/** SDP-3 / SDP-4 / SDP-5: Parent's bottom tabs — Home, Dropoff/Pickup, Notices, and Menu (Profile/Change Password/Log Out). */
+// One icon function per tab, in tab order.
+const ICONS = ['🏠', '🚗', '💬', '☰'].map(tabIcon);
+
+/** SDP-3 / SDP-4 / SDP-5: Parent's bottom tabs — Home, Dropoff/Pickup, Messages, and Menu (Profile/Change Password/Log Out). */
 function ParentTabs() {
   const { unreadCount } = useNotices();
   useEffect(() => {
@@ -38,26 +42,26 @@ function ParentTabs() {
       <Tab.Screen
         name="Home"
         component={HomeScreen}
-        options={{ title: 'Home', tabBarIcon: ({ size, focused }) => <TabIcon emoji="🏠" size={size} focused={focused} /> }}
+        options={{ title: 'Home', tabBarIcon: ICONS[0] }}
       />
       <Tab.Screen
         name="DropoffPickup"
         component={DropoffPickupScreen}
-        options={{ title: 'Dropoff/Pickup', tabBarIcon: ({ size, focused }) => <TabIcon emoji="🚗" size={size} focused={focused} /> }}
+        options={{ title: 'Dropoff/Pickup', tabBarIcon: ICONS[1] }}
       />
       <Tab.Screen
-        name="Notices"
+        name="Messages"
         component={NoticesScreen}
         options={{
-          title: 'Notices',
+          title: 'Messages',
           tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
-          tabBarIcon: ({ size, focused }) => <TabIcon emoji="🔔" size={size} focused={focused} />,
+          tabBarIcon: ICONS[2],
         }}
       />
       <Tab.Screen
         name="Menu"
         component={MenuStackNavigator}
-        options={{ title: 'Menu', headerShown: false, tabBarIcon: ({ size, focused }) => <TabIcon emoji="☰" size={size} focused={focused} /> }}
+        options={{ title: 'Menu', headerShown: false, tabBarIcon: ICONS[3] }}
       />
     </Tab.Navigator>
   );

@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import type { AuthSession, Child, LoginResult, Notice, QueueItem } from '../types';
+import type { AuthSession, Child, LoginResult, Notice, QueueItem, SentNotice } from '../types';
 import { APP_VERSION } from '../appVersion';
 
 // Which backend the app signs in to. The live server (Railway) by default —
@@ -146,7 +146,10 @@ export const api = {
   // A school administrator's Subscription page
   mySubscription: (token: string) => request<SchoolSubscriptionView>('/admin/subscription', {}, token),
   /** Pay by card (answers a Stripe page to open), or, when already paying by card, change plan there and then. */
-  subscriptionCheckout: (token: string, input: { planId: string; interval: BillingInterval; confirm: true }) =>
+  /** Puts the school's running free trial on the chosen plan. */
+  chooseTrialPlan: (token: string, planId: string, interval: BillingInterval) =>
+    request<void>('/admin/subscription/trial', { method: 'POST', body: JSON.stringify({ planId, interval }) }, token),
+  subscriptionCheckout: (token: string, input: { planId: string; interval: BillingInterval; confirm: true; startNow?: boolean }) =>
     request<{ url?: string; changed?: boolean }>('/admin/subscription/checkout', { method: 'POST', body: JSON.stringify(input) }, token),
   requestSubscriptionChange: (token: string, input: { type: 'CHANGE_PLAN' | 'CANCEL'; planId?: string; interval?: BillingInterval; note?: string; confirm: true }) =>
     request<{ id: string }>('/admin/subscription/requests', { method: 'POST', body: JSON.stringify(input) }, token),
@@ -218,6 +221,8 @@ export const api = {
   myNotices: (token: string) =>
     request<(Omit<Notice, 'read'> & { read: number })[]>('/me/notices', {}, token)
       .then(rows => rows.map(row => ({ ...row, read: Boolean(row.read) }))),
+  /** Sent box — what the signed-in user sent themselves, any role. */
+  sentNotices: (token: string) => request<SentNotice[]>('/notices/sent', {}, token),
   markNoticeRead: (token: string, noticeId: string) => request<void>(`/notices/${noticeId}/read`, { method: 'POST' }, token),
   inviteGuardian: (token: string, input: { fullName: string; email: string; phone?: string; relationship: string }) =>
     request<{ id: string; status: 'PENDING' } & InviteResult>('/me/guardians', { method: 'POST', body: JSON.stringify(input) }, token),

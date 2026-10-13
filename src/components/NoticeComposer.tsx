@@ -23,7 +23,7 @@ export function NoticeComposer({
   allLabel,
   parentOptions = [],
   onSend,
-  sendLabel = 'Send Notice',
+  sendLabel = 'Send Message',
 }: NoticeComposerProps) {
   const [mode, setMode] = useState<'ALL' | 'PARENT'>('ALL');
   const [parentId, setParentId] = useState(parentOptions[0]?.id ?? '');
@@ -37,7 +37,7 @@ export function NoticeComposer({
     if (!parentOptions.some(option => option.id === parentId)) {
       setParentId(parentOptions[0]?.id ?? '');
     }
-  }, [parentOptions]);
+  }, [parentOptions, parentId]);
 
   const handleSend = () => {
     if (!title.trim() || !body.trim()) return;

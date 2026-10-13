@@ -11,8 +11,10 @@ import { Screen } from '../../components/Screen';
 import { useAuth } from '../../context/AuthContext';
 import { MfaSignInStep } from '../../components/MfaSignInStep';
 import { LogoPicker } from '../../components/LogoPicker';
+import { markJustRegistered } from '../../utils/onboarding';
 import { api, ApiError } from '../../services/api';
 import { isMfaChallenge, type MfaChallenge } from '../../types';
+import { PasswordInput } from '../../components/ui';
 
 // Admins must use two-step verification, so registering normally answers
 // with a setup challenge: the new admin sets up their authenticator app
@@ -45,6 +47,8 @@ export function RegisterSchoolScreen() {
       logoDataUrl: logoDataUrl || undefined,
       emailCode: code,
     });
+    // Next stop after signing in: choosing a plan (see the admin OverviewScreen).
+    markJustRegistered();
     if (isMfaChallenge(result)) setChallenge(result);
     else await adoptSession(result);
   };
@@ -193,17 +197,17 @@ export function RegisterSchoolScreen() {
         value={email}
         onChangeText={setEmail}
       />
-      <TextInput
+      <PasswordInput
         style={s.input}
         placeholder="Password"
-        secureTextEntry
+        autoComplete="new-password"
         value={password}
         onChangeText={setPassword}
       />
-      <TextInput
+      <PasswordInput
         style={s.input}
         placeholder="Confirm password"
-        secureTextEntry
+        autoComplete="new-password"
         value={confirm}
         onChangeText={setConfirm}
       />

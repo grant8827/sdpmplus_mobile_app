@@ -74,10 +74,15 @@ export function HomeScreen() {
         onPress={() => navigation.navigate('DropoffPickup')}
       />
       <QuickAction
-        title="Notices"
+        title="Class & Attendance"
+        subtitle="Monthly attendance and homeroom info"
+        onPress={() => navigation.navigate('Menu', { screen: 'Attendance' })}
+      />
+      <QuickAction
+        title="Messages"
         subtitle="Announcements from school and teachers"
         badge={unreadCount}
-        onPress={() => navigation.navigate('Notices')}
+        onPress={() => navigation.navigate('Messages')}
       />
     </Screen>
   );

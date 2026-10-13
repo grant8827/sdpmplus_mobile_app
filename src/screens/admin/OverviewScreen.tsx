@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Screen } from '../../components/Screen';
 import { SchoolBadge } from '../../components/SchoolBadge';
 import { SummaryTile } from '../../components/SummaryTile';
 import { useAuth } from '../../context/AuthContext';
 import { api, type AdminOverview } from '../../services/api';
 import type { Notice } from '../../types';
+import type { AdminTabParamList } from '../../navigation/AdminTabNavigator';
+import { takeJustRegistered } from '../../utils/onboarding';
 
 const POLL_MS = 4000;
 
@@ -23,6 +27,11 @@ const POLL_MS = 4000;
  */
 export function OverviewScreen() {
   const { token } = useAuth();
+  const navigation = useNavigation<BottomTabNavigationProp<AdminTabParamList>>();
+  // Straight after registering a school: on to choosing a plan (free trial or pay).
+  useEffect(() => {
+    if (takeJustRegistered()) navigation.navigate('Menu', { screen: 'Subscription' });
+  }, [navigation]);
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
 

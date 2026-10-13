@@ -25,7 +25,9 @@ function capacityNote(data: SchoolSubscriptionView): string | null {
  * price, active students against the plan's limit, the trial or renewal
  * date, the plans, and invoices. Paying by card opens our payment
  * provider's secure page in the phone's browser; the page refreshes
- * when the administrator comes back to the app. Every plan includes
+ * when the administrator comes back to the app. During the free trial
+ * the administrator can also move the trial to another plan. A newly
+ * registered school is brought here to choose. Every plan includes
  * every feature.
  */
 export function SubscriptionScreen() {
@@ -88,6 +90,10 @@ export function SubscriptionScreen() {
     if (!(await confirm('Ask to cancel?', 'Your subscription stays active until the end of the period you have paid for. Nothing changes until our team confirms it.', 'Send request', true))) return;
     run(async () => { await api.requestSubscriptionChange(token, { type: 'CANCEL', confirm: true }); return "We received your cancellation request. We'll confirm it shortly."; });
   };
+  // During the free trial (no card yet): which plan the trial is on.
+  const moveTrialTo = (plan: SchoolPlanOption) => {
+    if (token) run(async () => { await api.chooseTrialPlan(token, plan.id, interval); return `Your free trial is now on ${plan.name}.`; });
+  };
   const undoCancel = () => { if (token) run(async () => { await api.cancelPaidSubscription(token, { resume: true }); return 'Your subscription will continue.'; }); };
   const openPortal = () => { if (token) run(async () => { await Linking.openURL((await api.billingPortal(token)).url); return 'Opening your card and receipts in your browser.'; }); };
   const withdraw = (requestId: string) => { if (token) run(async () => { await api.withdrawSubscriptionRequest(token, requestId); return 'Request withdrawn.'; }); };
@@ -105,6 +111,7 @@ export function SubscriptionScreen() {
         : plan.current && sub?.status !== 'TRIALING' && sub?.status !== 'CANCELED' ? `Switch to ${interval === 'YEAR' ? 'annual' : 'monthly'}`
           : plan.customPricing ? 'Ask about this plan'
             : data.paidOnline ? 'Switch to this plan' : data.onlinePayment ? 'Pay by card' : 'Choose this plan';
+  const inTrial = sub?.status === 'TRIALING' && !sub.trialEnded && !data.paidOnline;
   const barColor = data.level === 'FULL' ? COLORS.red : data.level === 'OK' ? COLORS.green : COLORS.amber;
 
   return (
@@ -180,6 +187,9 @@ export function SubscriptionScreen() {
             <Text style={styles.body}>{limitLabel(plan.studentLimit)}</Text>
             <Muted>{plan.customPricing ? "We'll agree a price with you." : 'Every feature included.'}</Muted>
             <Button label={buttonLabel(plan)} variant={plan.recommended ? 'primary' : 'secondary'} small onPress={() => choose(plan)} disabled={busy || plan.tooSmall || sameChoice(plan) || blockedByRequest} />
+            {inTrial && !plan.current && !plan.tooSmall && (
+              <Button label="Use for my free trial" variant="secondary" small onPress={() => moveTrialTo(plan)} disabled={busy} />
+            )}
           </Card>
         );
       })}

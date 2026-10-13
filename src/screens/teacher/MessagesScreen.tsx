@@ -2,13 +2,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Screen } from '../../components/Screen';
 import { SubTabs } from '../../components/SubTabs';
 import { NoticeCards } from '../../components/NoticeCards';
+import { SentNotices } from '../../components/SentNotices';
 import { NoticeComposer, type NoticeTarget, type ParentOption } from '../../components/NoticeComposer';
 import { Banner, Label, errorText } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import type { Notice } from '../../types';
 
-type Tab = 'messages' | 'compose';
+type Tab = 'messages' | 'unread' | 'sent' | 'compose';
 
 /**
  * Teacher Messages — same as the website's: an inbox (All Staff messages
@@ -61,14 +62,16 @@ export function MessagesScreen() {
     }
   };
 
-  const unread = notices.filter(n => !n.read).length;
+  const unread = notices.filter(n => !n.read);
 
   return (
     <Screen title="Messages" subtitle="School announcements, and messages to your class or a parent.">
-      <SubTabs tabs={[{ key: 'messages', label: `Messages${unread ? ` (${unread})` : ''}` }, { key: 'compose', label: 'Compose' }]} active={tab} onChange={setTab} />
+      <SubTabs tabs={[{ key: 'messages', label: 'Messages' }, { key: 'unread', label: `Unread${unread.length ? ` (${unread.length})` : ''}` }, { key: 'sent', label: 'Sent' }, { key: 'compose', label: 'Compose' }]} active={tab} onChange={setTab} />
       <Banner text={message} onDismiss={() => setMessage('')} />
 
       {tab === 'messages' && <NoticeCards notices={notices} onRead={markRead} />}
+      {tab === 'unread' && <NoticeCards notices={unread} onRead={markRead} emptyText="No unread messages." />}
+      {tab === 'sent' && <SentNotices />}
 
       {tab === 'compose' && (
         <>

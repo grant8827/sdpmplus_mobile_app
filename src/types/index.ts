@@ -55,6 +55,7 @@ export interface Child {
   photoUrl?: string;
   parentId?: string;
   teacherId: string;
+  teacherName?: string;
   gradeName?: string;
   className?: string;
   status: ChildStatus;
@@ -114,4 +115,13 @@ export interface Notice {
   senderRole: Role;
   createdAt: string; // ISO timestamp
   read: boolean;
+}
+
+/** A notice the signed-in user sent — the Sent tab. `recipient` is a display label ("All Parents", "School Office", or a person's name). */
+export interface SentNotice {
+  id: string;
+  title: string;
+  body: string;
+  recipient: string;
+  createdAt: string; // ISO timestamp
 }

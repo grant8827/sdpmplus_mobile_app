@@ -65,7 +65,7 @@ export function MenuScreen() {
       {user?.role === 'parent' && (
         <>
           <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('Attendance')}>
-            <Text style={styles.rowText}>Attendance</Text>
+            <Text style={styles.rowText}>Class & Attendance</Text>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('AddGuardian')}>

@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { MfaSignInStep } from '../../components/MfaSignInStep';
+import { PasswordInput } from '../../components/ui';
 import type { MfaChallenge } from '../../types';
 
 const WEBSITE = 'sdpmplus.com';
@@ -44,7 +45,7 @@ const FEATURES: { icon: string; title: string; body: string }[] = [
   {
     icon: '🔔',
     title: 'Stay in the loop',
-    body: 'Notices from the school and teachers, right on your phone.',
+    body: 'Messages from the school and teachers, right on your phone.',
   },
 ];
 
@@ -209,11 +210,11 @@ export function LoginScreen() {
             value={identifier}
             onChangeText={setIdentifier}
           />
-          <TextInput
+          <PasswordInput
             style={styles.input}
             placeholder="Password"
             placeholderTextColor="#9CA3AF"
-            secureTextEntry
+            autoComplete="current-password"
             value={password}
             onChangeText={setPassword}
           />

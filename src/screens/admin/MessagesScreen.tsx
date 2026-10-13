@@ -3,12 +3,13 @@ import { Screen } from '../../components/Screen';
 import { SubTabs } from '../../components/SubTabs';
 import { Dropdown } from '../../components/Dropdown';
 import { NoticeCards } from '../../components/NoticeCards';
+import { SentNotices } from '../../components/SentNotices';
 import { Banner, Button, Card, ChipRow, Input, Label, errorText } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import type { Notice } from '../../types';
 
-type Tab = 'messages' | 'send';
+type Tab = 'messages' | 'unread' | 'sent' | 'send';
 type Audience = 'ALL_STAFF' | 'ONE_STAFF' | 'ALL_PARENTS' | 'ONE_PARENT';
 const AUDIENCES: { value: Audience; label: string }[] = [
   { value: 'ALL_STAFF', label: 'All Staff' },
@@ -81,14 +82,16 @@ export function MessagesScreen() {
   };
 
   const oneOf = audience === 'ONE_STAFF' ? staffOptions : audience === 'ONE_PARENT' ? parentOptions : null;
-  const unread = messages.filter(n => !n.read).length;
+  const unread = messages.filter(n => !n.read);
 
   return (
     <Screen title="Messages" subtitle="Send and review messages to staff and parents.">
-      <SubTabs tabs={[{ key: 'messages', label: `Messages${unread ? ` (${unread})` : ''}` }, { key: 'send', label: 'Send Message' }]} active={tab} onChange={setTab} />
+      <SubTabs tabs={[{ key: 'messages', label: 'Messages' }, { key: 'unread', label: `Unread${unread.length ? ` (${unread.length})` : ''}` }, { key: 'sent', label: 'Sent' }, { key: 'send', label: 'Send Message' }]} active={tab} onChange={setTab} />
       <Banner text={message} onDismiss={() => setMessage('')} />
 
       {tab === 'messages' && <NoticeCards notices={messages} onRead={markRead} />}
+      {tab === 'unread' && <NoticeCards notices={unread} onRead={markRead} emptyText="No unread messages." />}
+      {tab === 'sent' && <SentNotices />}
 
       {tab === 'send' && (
         <Card>

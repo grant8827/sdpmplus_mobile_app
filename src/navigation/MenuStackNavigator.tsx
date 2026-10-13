@@ -64,7 +64,7 @@ export function MenuStackNavigator() {
       <Stack.Screen name="DataPrivacy" component={DataPrivacyScreen} options={{ title: 'Data & Privacy' }} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ title: 'Subscription' }} />
       <Stack.Screen name="District" component={DistrictOverviewScreen} options={{ title: 'District' }} />
-      <Stack.Screen name="Attendance" component={ParentAttendanceScreen} options={{ title: 'Attendance' }} />
+      <Stack.Screen name="Attendance" component={ParentAttendanceScreen} options={{ title: 'Class & Attendance' }} />
       <Stack.Screen name="AddGuardian" component={AddGuardianScreen} options={{ title: 'Add Guardian' }} />
     </Stack.Navigator>
   );

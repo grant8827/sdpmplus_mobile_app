@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { api } from '../services/api';
 import type { Notice } from '../types';
@@ -38,10 +32,10 @@ export function NoticesProvider({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; clearInterval(interval); };
   }, [token]);
 
-  const markRead = (noticeId: string) => {
+  const markRead = useCallback((noticeId: string) => {
     setNotices(prev => prev.map(n => (n.id === noticeId ? { ...n, read: true } : n)));
     if (token) api.markNoticeRead(token, noticeId).catch(() => {});
-  };
+  }, [token]);
 
   const value = useMemo<NoticesContextValue>(
     () => ({
@@ -49,7 +43,7 @@ export function NoticesProvider({ children }: { children: React.ReactNode }) {
       unreadCount: notices.filter(n => !n.read).length,
       markRead,
     }),
-    [notices],
+    [notices, markRead],
   );
 
   return <NoticesContext.Provider value={value}>{children}</NoticesContext.Provider>;

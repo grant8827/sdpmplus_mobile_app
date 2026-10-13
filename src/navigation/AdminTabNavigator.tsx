@@ -1,11 +1,12 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import { OverviewScreen } from '../screens/admin/OverviewScreen';
 import { LiveQueueScreen } from '../screens/admin/LiveQueueScreen';
 import { MessagesScreen } from '../screens/admin/MessagesScreen';
 import { StudentManagementScreen } from '../screens/admin/StudentManagementScreen';
-import { MenuStackNavigator } from './MenuStackNavigator';
-import { TabIcon } from '../components/TabIcon';
+import { MenuStackNavigator, type MenuStackParamList } from './MenuStackNavigator';
+import { tabIcon } from '../components/TabIcon';
 import { useAuth } from '../context/AuthContext';
 
 export type AdminTabParamList = {
@@ -13,10 +14,13 @@ export type AdminTabParamList = {
   Queue: undefined;
   Students: undefined;
   Messages: undefined;
-  Menu: undefined;
+  Menu: NavigatorScreenParams<MenuStackParamList> | undefined;
 };
 
 const Tab = createBottomTabNavigator<AdminTabParamList>();
+
+// One icon function per tab, in tab order.
+const ICONS = ['📊', '📋', '🎓', '💬', '☰'].map(tabIcon);
 
 /**
  * Admin console — the same sections as the website's admin tabs (see
@@ -33,27 +37,27 @@ export function AdminTabNavigator() {
       <Tab.Screen
         name="Overview"
         component={OverviewScreen}
-        options={{ tabBarIcon: ({ size, focused }) => <TabIcon emoji="📊" size={size} focused={focused} /> }}
+        options={{ tabBarIcon: ICONS[0] }}
       />
       <Tab.Screen
         name="Queue"
         component={LiveQueueScreen}
-        options={{ title: 'Live Queue', tabBarIcon: ({ size, focused }) => <TabIcon emoji="📋" size={size} focused={focused} /> }}
+        options={{ title: 'Live Queue', tabBarIcon: ICONS[1] }}
       />
       <Tab.Screen
         name="Students"
         component={StudentManagementScreen}
-        options={{ tabBarIcon: ({ size, focused }) => <TabIcon emoji="🎓" size={size} focused={focused} /> }}
+        options={{ tabBarIcon: ICONS[2] }}
       />
       <Tab.Screen
         name="Messages"
         component={MessagesScreen}
-        options={{ tabBarIcon: ({ size, focused }) => <TabIcon emoji="💬" size={size} focused={focused} /> }}
+        options={{ tabBarIcon: ICONS[3] }}
       />
       <Tab.Screen
         name="Menu"
         component={MenuStackNavigator}
-        options={{ title: 'Menu', headerShown: false, tabBarIcon: ({ size, focused }) => <TabIcon emoji="☰" size={size} focused={focused} /> }}
+        options={{ title: 'Menu', headerShown: false, tabBarIcon: ICONS[4] }}
       />
     </Tab.Navigator>
   );

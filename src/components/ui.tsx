@@ -67,6 +67,30 @@ export function Input(props: TextInputProps) {
   return <TextInput placeholderTextColor={COLORS.faint} {...props} style={[styles.input, props.multiline && styles.textArea, props.style]} />;
 }
 
+/** Password field with a screen-reader-labelled show/hide control. */
+export function PasswordInput({ style, ...props }: Omit<TextInputProps, 'secureTextEntry'>) {
+  const [visible, setVisible] = React.useState(false);
+  return (
+    <View style={styles.passwordInputWrap}>
+      <TextInput
+        placeholderTextColor={COLORS.faint}
+        {...props}
+        secureTextEntry={!visible}
+        style={[styles.input, styles.passwordInput, style]}
+      />
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={visible ? 'Hide password' : 'Show password'}
+        accessibilityState={{ expanded: visible }}
+        onPress={() => setVisible(current => !current)}
+        style={styles.passwordToggle}
+      >
+        <Text style={styles.passwordToggleText}>{visible ? 'Hide' : 'Show'}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export function Label({ children }: { children: React.ReactNode }) {
   return <Text style={styles.label}>{children}</Text>;
 }
@@ -176,6 +200,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: COLORS.slate,
   },
+  passwordInputWrap: { position: 'relative', width: '100%' },
+  passwordInput: { paddingRight: 68 },
+  passwordToggle: { position: 'absolute', right: 8, top: 0, bottom: 0, justifyContent: 'center', paddingHorizontal: 6 },
+  passwordToggleText: { color: COLORS.blue, fontSize: 13, fontWeight: '600' },
   textArea: { minHeight: 90, textAlignVertical: 'top' },
   label: { fontSize: 13, color: COLORS.muted },
   heading: { fontSize: 16, fontWeight: '700', color: COLORS.slate },

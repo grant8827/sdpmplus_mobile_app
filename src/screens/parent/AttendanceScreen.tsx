@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SubTabs } from '../../components/SubTabs';
+import { Avatar } from '../../components/ui';
 import { Screen } from '../../components/Screen';
 import { Dropdown } from '../../components/Dropdown';
 import { useAuth } from '../../context/AuthContext';
-import { api, type MyAttendanceChild } from '../../services/api';
+import { api, type MyAttendanceChild, type MyClassChild } from '../../services/api';
 import { getMonthWeeks, MONTH_NAMES, WEEKDAY_LABELS } from '../../utils/month';
 
 type StoredStatus = 'PRESENT' | 'ABSENT' | 'SICK' | 'SUSPENDED' | 'HOLIDAY';
@@ -40,11 +42,15 @@ const YEAR_OPTIONS = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear(
 const MONTH_OPTIONS = MONTH_NAMES.map((name, i) => ({ label: name, value: i + 1 }));
 const YEAR_DROPDOWN_OPTIONS = YEAR_OPTIONS.map(y => ({ label: String(y), value: y }));
 
+type Tab = 'class' | 'attendance';
+
 /**
- * Reached from the parent's Menu tab — a full month, laid out week by
- * week (weekdays only), for every linked child. Present/Absent/Sick/
- * Suspended/Holiday come from attendance_records (a teacher marks
- * these — this screen is read-only).
+ * Parent → Class & Attendance (reached from Home and the Menu tab),
+ * same as the website's, in two sub-tabs:
+ * - My Class: one card per linked child with their grade, room and teacher.
+ * - Attendance: a full month, laid out week by week (weekdays only),
+ *   for every linked child. Present/Absent/Sick/Suspended/Holiday come
+ *   from attendance_records (a teacher marks these — read-only here).
  */
 export function AttendanceScreen() {
   const { token } = useAuth();
@@ -52,6 +58,12 @@ export function AttendanceScreen() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-12
   const [infoOpen, setInfoOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>('class');
+  const [classes, setClasses] = useState<MyClassChild[]>([]);
+
+  useEffect(() => {
+    if (token) api.myClasses(token).then(setClasses).catch(() => {});
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -73,7 +85,35 @@ export function AttendanceScreen() {
   };
 
   return (
-    <Screen title="Attendance" subtitle="Select a month to see the full record, week by week.">
+    <Screen title="Class & Attendance" subtitle={tab === 'class' ? "Each child's grade, room and teacher." : 'Select a month to see the full record, week by week.'}>
+      <SubTabs tabs={[{ key: 'class', label: 'My Class' }, { key: 'attendance', label: 'Attendance' }]} active={tab} onChange={setTab} />
+
+      {tab === 'class' && (
+        classes.length === 0 ? (
+          <Text style={styles.empty}>No children linked to this account yet.</Text>
+        ) : (
+          classes.map(child => (
+            <View key={child.id} style={styles.card}>
+              <View style={styles.classHeader}>
+                <Avatar uri={child.photoUrl} name={child.fullName} />
+                <Text style={styles.childName}>{child.fullName}</Text>
+              </View>
+              {/* Room falls back to the class name — not both, since a class
+                  name like "Grade 1 - Room 12" already spells out grade and room. */}
+              {[
+                ['Grade', child.gradeName ?? 'Not assigned yet'],
+                ['Room', child.roomName || child.className || 'Not assigned yet'],
+                ['Teacher', child.teacherName || 'Not assigned yet'],
+              ].map(([label, value]) => (
+                <Text key={label} style={styles.classLine}><Text style={styles.classLabel}>{label}:</Text> {value}</Text>
+              ))}
+            </View>
+          ))
+        )
+      )}
+
+      {tab === 'attendance' && (
+        <>
       <View style={styles.filterRow}>
         <View style={styles.filterCol}>
           <Dropdown label="Month" options={MONTH_OPTIONS} value={month} onChange={setMonth} />
@@ -125,6 +165,8 @@ export function AttendanceScreen() {
           </View>
         ))
       )}
+        </>
+      )}
 
       <Modal visible={infoOpen} transparent animationType="fade" onRequestClose={() => setInfoOpen(false)}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setInfoOpen(false)}>
@@ -149,6 +191,9 @@ export function AttendanceScreen() {
 }
 
 const styles = StyleSheet.create({
+  classHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  classLine: { fontSize: 14, color: '#374151', marginBottom: 4 },
+  classLabel: { fontWeight: '700' },
   empty: { color: '#6B7280', fontSize: 14 },
   filterRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   filterCol: { flex: 1 },

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, TextInput, TouchableOpacity, Text, View } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../../components/Screen';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
+import { PasswordInput } from '../../components/ui';
 
 export function ChangePasswordScreen() {
   const { token } = useAuth();
@@ -35,9 +36,9 @@ export function ChangePasswordScreen() {
   return (
     <Screen title="Change Password" subtitle="Choose a new password for your account.">
       <View style={styles.card}>
-        <TextInput style={styles.input} placeholder="Current password" secureTextEntry value={currentPassword} onChangeText={setCurrentPassword} />
-        <TextInput style={styles.input} placeholder="New password" secureTextEntry value={newPassword} onChangeText={setNewPassword} />
-        <TextInput style={styles.input} placeholder="Confirm new password" secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} />
+        <PasswordInput style={styles.input} placeholder="Current password" autoComplete="current-password" value={currentPassword} onChangeText={setCurrentPassword} />
+        <PasswordInput style={styles.input} placeholder="New password" autoComplete="new-password" value={newPassword} onChangeText={setNewPassword} />
+        <PasswordInput style={styles.input} placeholder="Confirm new password" autoComplete="new-password" value={confirmPassword} onChangeText={setConfirmPassword} />
         <TouchableOpacity style={styles.button} onPress={submit} disabled={submitting}>
           <Text style={styles.buttonText}>{submitting ? 'Saving…' : 'Save Password'}</Text>
         </TouchableOpacity>
