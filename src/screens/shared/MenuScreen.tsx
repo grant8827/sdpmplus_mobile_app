@@ -58,7 +58,6 @@ export function MenuScreen() {
           {canManageSchool && item('SchoolSetup', 'School Setup')}
           {canManageSchool && item('AuditLog', 'Audit Log')}
           {canManageSchool && item('DataPrivacy', 'Data & Privacy')}
-          {canManageSchool && item('Subscription', 'Subscription')}
         </>
       )}
 
@@ -84,6 +83,7 @@ export function MenuScreen() {
         <Text style={styles.rowText}>Security</Text>
         <Text style={styles.chevron}>›</Text>
       </TouchableOpacity>
+      {user?.role === 'admin' && canManageSchool && item('Subscription', 'Upgrade Plan')}
 
       <TouchableOpacity style={[styles.row, styles.logoutRow]} onPress={confirmLogout}>
         <Text style={styles.logoutText}>Log Out</Text>

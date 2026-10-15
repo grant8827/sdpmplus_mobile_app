@@ -4,6 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Screen } from '../../components/Screen';
 import { SchoolBadge } from '../../components/SchoolBadge';
+import { PlanStatusBanner } from '../../components/PlanStatusBanner';
+import { usePlanStatus } from '../../utils/planStatus';
 import { SummaryTile } from '../../components/SummaryTile';
 import { useAuth } from '../../context/AuthContext';
 import { api, type AdminOverview } from '../../services/api';
@@ -34,6 +36,7 @@ export function OverviewScreen() {
   }, [navigation]);
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
+  const { plan } = usePlanStatus();
 
   useEffect(() => {
     if (!token) return;
@@ -55,6 +58,7 @@ export function OverviewScreen() {
   return (
     <Screen title="Overview" subtitle="School-wide snapshot.">
       <SchoolBadge />
+      <PlanStatusBanner plan={plan} />
       <View style={styles.grid}>
         <SummaryTile label="Total Enrolled Students" value={overview?.totalStudents ?? 0} />
         <SummaryTile label="Active Teachers" value={overview?.activeTeachers ?? 0} />

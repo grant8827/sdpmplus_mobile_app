@@ -10,6 +10,8 @@ import { Avatar, Banner, Button, COLORS, Card, EmptyText, Heading, Input, Muted,
 import { useAuth } from '../../context/AuthContext';
 import { api, type AdminSetup, type AttendanceRow, type AttendanceSummary, type SettableAttendanceStatus, type Student } from '../../services/api';
 import { showInviteResult } from '../../utils/invite';
+import { PlanStatusBanner } from '../../components/PlanStatusBanner';
+import { addStudentBlocked, usePlanStatus } from '../../utils/planStatus';
 
 interface DraftChild {
   firstName: string;
@@ -42,6 +44,9 @@ export function StudentManagementScreen() {
   const [students, setStudents] = useState<Student[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  // Warn (and block the Add button) before the server would refuse it.
+  const { plan, reload: reloadPlan } = usePlanStatus();
+  const blocked = addStudentBlocked(plan);
 
   const [gradeFilter, setGradeFilter] = useState('');
   const [search, setSearch] = useState('');
@@ -101,6 +106,7 @@ export function StudentManagementScreen() {
       setMessage(errorText(error, 'Something went wrong'));
     } finally {
       setBusy(false);
+      reloadPlan();
     }
   };
 
@@ -185,6 +191,7 @@ export function StudentManagementScreen() {
     <Screen title="Students" subtitle="Enrollment and daily attendance.">
       <SubTabs tabs={tabs} active={tab} onChange={setTab} />
       <Banner text={message} onDismiss={() => setMessage('')} />
+      {(tab === 'register' || blocked) && <PlanStatusBanner plan={plan} />}
 
       {tab === 'list' && (
         <>
@@ -282,7 +289,10 @@ export function StudentManagementScreen() {
                 <Muted>The parent gets an email with a link to choose their own password. Photos can be added on the website.</Muted>
               </>
             )}
-            <Button label={busy ? 'Adding…' : children.length > 1 ? `Add ${children.length} Students` : 'Add Student'} onPress={register} disabled={busy} />
+            {!blocked && plan?.remaining != null && children.length > plan.remaining && (
+              <Text style={styles.limitNote}>Your plan has room for {plan.remaining} more {plan.remaining === 1 ? 'student' : 'students'}, so only the first {plan.remaining} will be added. Choose a larger plan under Upgrade Plan to add them all.</Text>
+            )}
+            <Button label={busy ? 'Adding…' : children.length > 1 ? `Add ${children.length} Students` : 'Add Student'} onPress={register} disabled={busy || Boolean(blocked)} />
           </Card>
         </>
       )}
@@ -291,6 +301,7 @@ export function StudentManagementScreen() {
 }
 
 const styles = StyleSheet.create({
+  limitNote: { color: COLORS.red, fontSize: 13 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   headerText: { flex: 1, gap: 2 },
   name: { fontSize: 16, fontWeight: '700', color: '#374151' },
