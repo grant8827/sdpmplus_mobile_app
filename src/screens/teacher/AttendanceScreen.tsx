@@ -4,7 +4,7 @@ import { Screen } from '../../components/Screen';
 import { SubTabs } from '../../components/SubTabs';
 import { Dropdown } from '../../components/Dropdown';
 import { AttendanceList } from '../../components/AttendanceList';
-import { Banner, Button, COLORS, Card, EmptyText, Input, Muted } from '../../components/ui';
+import { Avatar, Banner, Button, COLORS, Card, EmptyText, Input, Muted } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { api, type AttendanceRow, type SettableAttendanceStatus, type TeacherAttendanceStudent } from '../../services/api';
 import { MONTH_NAMES, getMonthWeeks } from '../../utils/month';
@@ -117,7 +117,10 @@ export function AttendanceScreen() {
             : visible.length === 0 ? <EmptyText>No student matches "{search.trim()}".</EmptyText>
             : visible.map(student => (
               <Card key={student.id}>
-                <Text style={styles.name}>{student.fullName}</Text>
+                <View style={styles.studentIdentity}>
+                  <Avatar uri={student.photoUrl} name={student.fullName} />
+                  <Text style={styles.name}>{student.fullName}</Text>
+                </View>
                 <Muted>{MONTH_NAMES[month - 1]} {year}</Muted>
                 <View style={styles.weekRow}>
                   {WEEKDAYS.map(day => <Text key={day} style={styles.weekday}>{day}</Text>)}
@@ -163,6 +166,7 @@ const styles = StyleSheet.create({
   pickers: { flexDirection: 'row', gap: 10 },
   flex: { flex: 1 },
   name: { fontSize: 16, fontWeight: '700', color: COLORS.slate },
+  studentIdentity: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   weekRow: { flexDirection: 'row', marginTop: 4 },
   weekday: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '600', color: COLORS.muted },
   dayCell: { flex: 1, alignItems: 'center', gap: 3, minHeight: 44 },

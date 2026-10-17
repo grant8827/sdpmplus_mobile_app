@@ -84,7 +84,7 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.schooldropottpickup"
+    namespace "com.sdpmplus"
     defaultConfig {
         applicationId "com.sdpmplus"
         minSdkVersion rootProject.ext.minSdkVersion

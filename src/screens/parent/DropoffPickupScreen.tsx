@@ -7,6 +7,7 @@ import type { Child } from '../../types';
 import { CHILD_STATUS_COLOR, CHILD_STATUS_LABEL, CHILD_STATUS_TEXT_COLOR } from '../../utils/childStatus';
 import { api, ApiError } from '../../services/api';
 import { PinModal } from '../../components/PinModal';
+import { Avatar } from '../../components/ui';
 import { hasGeofence, isWithinGeofence, type Coordinates } from '../../utils/geofence';
 
 const POLL_MS = 4000;
@@ -196,7 +197,10 @@ export function DropoffPickupScreen() {
           return (
             <View key={child.id} style={styles.card}>
               <View style={styles.cardHeader}>
-                <Text style={styles.childName}>{child.fullName}</Text>
+                <View style={styles.childIdentity}>
+                  <Avatar uri={child.photoUrl} name={child.fullName} />
+                  <Text style={styles.childName}>{child.fullName}</Text>
+                </View>
                 <View
                   style={[
                     styles.statusPill,
@@ -278,6 +282,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  childIdentity: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
   childName: {
     fontSize: 17,
     fontWeight: '600',

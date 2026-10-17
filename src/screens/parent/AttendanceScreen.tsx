@@ -131,7 +131,10 @@ export function AttendanceScreen() {
       ) : (
         children.map(child => (
           <View key={child.id} style={styles.card}>
-            <Text style={styles.childName}>{child.fullName}</Text>
+            <View style={styles.classHeader}>
+              <Avatar uri={child.photoUrl} name={child.fullName} />
+              <Text style={styles.childName}>{child.fullName}</Text>
+            </View>
             <Text style={styles.teacherLine}>
               {child.className ? `${child.className}${child.teacherName ? ` · ${child.teacherName}` : ''}` : 'Unassigned'}
               {' — '}{MONTH_NAMES[month - 1]} {year}

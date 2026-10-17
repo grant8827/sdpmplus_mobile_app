@@ -1,4 +1,4 @@
-package com.schooldropottpickup
+package com.sdpmplus
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

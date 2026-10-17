@@ -79,7 +79,7 @@ export function MfaSignInStep({ challenge, onSignedIn, onRestart }: {
   return (
     <View style={styles.column}>
       <Text style={styles.title}>Enter your code</Text>
-      <Text style={styles.subtitle}>Open your authenticator app and enter the 6-digit code for School Drop-off & Pick-up. Lost your phone? Enter a recovery code instead.</Text>
+      <Text style={styles.subtitle}>Open your authenticator app and enter the 6-digit code for SDPMPlus. Lost your phone? Enter a recovery code instead.</Text>
       <TextInput
         style={mfaStyles.codeInput}
         autoFocus

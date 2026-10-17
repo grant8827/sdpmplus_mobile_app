@@ -144,7 +144,7 @@ export function LoginScreen() {
             source={require('../../assets/sdpmplus-logo.jpg')}
             style={styles.logo}
             resizeMode="contain"
-            accessibilityLabel="SDPMPlus — School Drop-off & Pick-up"
+            accessibilityLabel="SDPMPlus"
           />
           <Text style={styles.tagline}>
             Faster, safer drop-offs and pick-ups for parents, teachers, and
