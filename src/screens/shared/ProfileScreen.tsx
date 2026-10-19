@@ -4,10 +4,11 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen } from '../../components/Screen';
 import { useAuth } from '../../context/AuthContext';
+import { DeleteSchoolCard } from '../../components/DeleteSchoolCard';
 import type { MenuStackParamList } from '../../navigation/MenuStackNavigator';
 
 export function ProfileScreen() {
-  const { user } = useAuth();
+  const { user, canManageSchool } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
 
   return (
@@ -30,6 +31,8 @@ export function ProfileScreen() {
           <Text style={styles.buttonText}>Pickup PIN</Text>
         </TouchableOpacity>
       )}
+      {/* School administrators only: ask for the whole school to be deleted. */}
+      {user?.role === 'admin' && canManageSchool && <DeleteSchoolCard />}
     </Screen>
   );
 }
