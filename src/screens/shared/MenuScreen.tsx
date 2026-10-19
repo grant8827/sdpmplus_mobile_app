@@ -7,7 +7,8 @@ import { Dropdown } from '../../components/Dropdown';
 import { useAuth } from '../../context/AuthContext';
 import type { MenuStackParamList } from '../../navigation/MenuStackNavigator';
 
-type MenuTarget = keyof MenuStackParamList;
+// Menu rows open screens that need no parameters.
+type MenuTarget = { [K in keyof MenuStackParamList]: MenuStackParamList[K] extends undefined ? K : never }[keyof MenuStackParamList];
 
 /**
  * Landing screen behind every role's bottom-tab "Menu" entry: account
@@ -58,6 +59,7 @@ export function MenuScreen() {
           {canManageSchool && item('SchoolSetup', 'School Setup')}
           {canManageSchool && item('AuditLog', 'Audit Log')}
           {canManageSchool && item('DataPrivacy', 'Data & Privacy')}
+          {item('Legal', 'Legal & Policies')}
         </>
       )}
 

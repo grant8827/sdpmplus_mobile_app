@@ -174,6 +174,9 @@ export const api = {
     request<void>(`/admin/campuses/${campusId}`, { method: 'PATCH', body: JSON.stringify(input) }, token),
   students: (token: string) => request<Student[]>('/admin/students', {}, token),
   addStudent: (token: string, input: unknown) => request<{ id: string } & InviteResult>('/admin/students', { method: 'POST', body: JSON.stringify(input) }, token),
+  /** Edit a student: name, number, birth date, grade and class, daycare, and (optionally) a new photo. */
+  updateStudent: (token: string, studentId: string, input: { firstName: string; lastName: string; studentNumber?: string; dateOfBirth?: string; schoolYearId: string; gradeLevelId: string; classId: string; daycare: boolean; photoDataUrl?: string }) =>
+    request<void>(`/admin/students/${studentId}`, { method: 'PATCH', body: JSON.stringify(input) }, token),
   setStudentStatus: (token: string, studentId: string, status: 'ACTIVE' | 'SUSPENDED') =>
     request<void>(`/admin/students/${studentId}`, { method: 'PATCH', body: JSON.stringify({ status }) }, token),
   deleteStudent: (token: string, studentId: string) => request<void>(`/admin/students/${studentId}`, { method: 'DELETE' }, token),
@@ -183,6 +186,10 @@ export const api = {
     request<{ promoted: number; skipped: number }>('/admin/promotions/by-grade', { method: 'POST', body: JSON.stringify(input) }, token),
   promoteByClass: (token: string, input: { fromClassId: string; toClassId: string; teacherUserId?: string }) =>
     request<{ promoted: number; skipped: number; sameYear: boolean }>('/admin/promotions/by-class', { method: 'POST', body: JSON.stringify(input) }, token),
+  /** The latest confirmation that an administrator read the Legal & Policies documents. */
+  policyAcknowledgment: (token: string) => request<{ acknowledgment: PolicyAcknowledgment | null }>('/admin/policies/acknowledgment', {}, token),
+  acknowledgePolicies: (token: string, input: { version: string; documents: { slug: string; title: string; updated: string | null }[] }) =>
+    request<{ acknowledgment: PolicyAcknowledgment }>('/admin/policies/acknowledgment', { method: 'POST', body: JSON.stringify(input) }, token),
   /** The open request to delete this school (Profile → Delete school account), if any. */
   schoolDeletionRequest: (token: string) => request<{ request: SchoolDeletionRequest | null }>('/admin/school/deletion-request', {}, token),
   requestSchoolDeletion: (token: string, input: { confirmName: string; password: string; reason?: string }) =>
@@ -280,6 +287,7 @@ export interface SchoolInvoice {
   id: string; number: string; description: string; amountCents: number; currency: string; status: 'DRAFT' | 'OPEN' | 'PAID' | 'VOID';
   dueOn: string | null; paidAt: string | null; paidCents: number; overdue: boolean; hostedUrl: string | null;
 }
+export interface PolicyAcknowledgment { version: string; userName: string; acknowledgedAt: string }
 export interface SchoolDeletionRequest {
   id: string; status: 'REQUESTED' | 'UNDER_REVIEW' | 'APPROVED' | 'PROCESSING'; createdAt: string; dueAt: string; requesterName: string;
   /** Still being reviewed, so the school can withdraw it. */
@@ -343,6 +351,10 @@ export interface Student extends Child {
   firstName: string;
   lastName: string;
   gradeLevelId: string;
+  schoolYearId: string;
+  classId: string;
+  dateOfBirth?: string;
+  studentNumber?: string;
   gradeName: string;
   className?: string;
   photoUrl?: string;

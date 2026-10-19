@@ -13,6 +13,8 @@ import { AuditLogScreen } from '../screens/admin/AuditLogScreen';
 import { DataPrivacyScreen } from '../screens/admin/DataPrivacyScreen';
 import { SubscriptionScreen } from '../screens/admin/SubscriptionScreen';
 import { DistrictOverviewScreen } from '../screens/admin/DistrictOverviewScreen';
+import { LegalDocumentScreen, LegalDocumentsScreen } from '../screens/admin/LegalDocumentsScreen';
+import { SCHOOL_DOCUMENTS } from '../legal/documents';
 import { AttendanceScreen as ParentAttendanceScreen } from '../screens/parent/AttendanceScreen';
 import { AddGuardianScreen } from '../screens/parent/AddGuardianScreen';
 
@@ -30,6 +32,8 @@ export type MenuStackParamList = {
   DataPrivacy: undefined;
   Subscription: undefined;
   District: undefined;
+  Legal: undefined;
+  LegalDocument: { slug: string };
   Attendance: undefined;
   AddGuardian: undefined;
 };
@@ -64,6 +68,12 @@ export function MenuStackNavigator() {
       <Stack.Screen name="DataPrivacy" component={DataPrivacyScreen} options={{ title: 'Data & Privacy' }} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ title: 'Subscription' }} />
       <Stack.Screen name="District" component={DistrictOverviewScreen} options={{ title: 'District' }} />
+      <Stack.Screen name="Legal" component={LegalDocumentsScreen} options={{ title: 'Legal & Policies' }} />
+      <Stack.Screen
+        name="LegalDocument"
+        component={LegalDocumentScreen}
+        options={({ route }) => ({ title: SCHOOL_DOCUMENTS.find(doc => doc.slug === route.params.slug)?.title ?? 'Legal & Policies' })}
+      />
       <Stack.Screen name="Attendance" component={ParentAttendanceScreen} options={{ title: 'Class & Attendance' }} />
       <Stack.Screen name="AddGuardian" component={AddGuardianScreen} options={{ title: 'Add Guardian' }} />
     </Stack.Navigator>

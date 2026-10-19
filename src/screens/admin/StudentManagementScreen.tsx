@@ -25,6 +25,8 @@ interface DraftChild {
 }
 const emptyChild = (gradeLevelId = ''): DraftChild => ({ firstName: '', lastName: '', studentNumber: '', dateOfBirth: '', gradeLevelId, classId: '', daycare: false, photoDataUrl: '' });
 const emptyParent = { guardianId: '', fullName: '', email: '', phone: '' };
+// Editing an existing student: photoDataUrl is a newly chosen photo, removePhoto clears the current one.
+interface EditStudentForm extends DraftChild { id: string; schoolYearId: string; currentPhotoUrl: string; removePhoto: boolean }
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 type Tab = 'list' | 'attendance' | 'register';
@@ -44,6 +46,7 @@ export function StudentManagementScreen() {
   const [students, setStudents] = useState<Student[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<EditStudentForm | null>(null);
   // Warn (and block the Add button) before the server would refuse it.
   const { plan, reload: reloadPlan } = usePlanStatus();
   const blocked = addStudentBlocked(plan);
@@ -157,6 +160,43 @@ export function StudentManagementScreen() {
     });
   };
 
+  const startEdit = (student: Student) => setEditing({
+    id: student.id,
+    firstName: student.firstName,
+    lastName: student.lastName,
+    studentNumber: student.studentNumber ?? '',
+    dateOfBirth: student.dateOfBirth ?? '',
+    gradeLevelId: student.gradeLevelId,
+    classId: student.classId ?? '',
+    schoolYearId: student.schoolYearId,
+    currentPhotoUrl: student.photoUrl ?? '',
+    photoDataUrl: '',
+    removePhoto: false,
+    daycare: Boolean(student.daycare),
+  });
+  const editClasses = editing ? setup?.classes.filter(c => c.schoolYearId === editing.schoolYearId && c.gradeLevelId === editing.gradeLevelId) ?? [] : [];
+  const saveStudent = () => {
+    if (!token || !editing) return;
+    if (!editing.firstName.trim() || !editing.lastName.trim()) { setMessage('First and last name are required.'); return; }
+    if (!editing.classId) { setMessage('Choose a class.'); return; }
+    const form = editing;
+    run(async () => {
+      await api.updateStudent(token, form.id, {
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        studentNumber: form.studentNumber.trim(),
+        dateOfBirth: form.dateOfBirth.trim(),
+        schoolYearId: form.schoolYearId,
+        gradeLevelId: form.gradeLevelId,
+        classId: form.classId,
+        daycare: form.daycare,
+        ...(form.photoDataUrl ? { photoDataUrl: form.photoDataUrl } : form.removePhoto ? { photoDataUrl: '' } : {}),
+      });
+      setEditing(null);
+      return 'Student updated.';
+    });
+  };
+
   const exportRecord = (student: Student) => {
     if (!token) return;
     run(async () => {
@@ -195,6 +235,31 @@ export function StudentManagementScreen() {
 
       {tab === 'list' && (
         <>
+          {editing && (
+            <Card>
+              <Heading>Edit student</Heading>
+              <PhotoPicker value={editing.photoDataUrl || editing.currentPhotoUrl} name={editing.firstName} onChange={photoDataUrl => setEditing({ ...editing, photoDataUrl, removePhoto: !photoDataUrl, currentPhotoUrl: photoDataUrl ? editing.currentPhotoUrl : '' })} disabled={busy} />
+              <Input placeholder="First name" value={editing.firstName} onChangeText={firstName => setEditing({ ...editing, firstName })} />
+              <Input placeholder="Last name" value={editing.lastName} onChangeText={lastName => setEditing({ ...editing, lastName })} />
+              <Input placeholder="Student number (optional)" value={editing.studentNumber} onChangeText={studentNumber => setEditing({ ...editing, studentNumber })} />
+              <Input placeholder="Date of birth, YYYY-MM-DD (optional)" value={editing.dateOfBirth} onChangeText={dateOfBirth => setEditing({ ...editing, dateOfBirth })} keyboardType="numbers-and-punctuation" />
+              <Dropdown label="Grade" options={gradeOptions} value={editing.gradeLevelId} onChange={gradeLevelId => setEditing({ ...editing, gradeLevelId, classId: '' })} />
+              <Dropdown
+                label="Class"
+                options={[{ label: 'Choose a class', value: '' }, ...editClasses.map(c => ({ label: c.name, value: c.id }))]}
+                value={editing.classId}
+                onChange={classId => setEditing({ ...editing, classId })}
+              />
+              <View style={styles.switchRow}>
+                <Switch value={editing.daycare} onValueChange={daycare => setEditing({ ...editing, daycare })} trackColor={{ true: COLORS.blue, false: '#D1D5DB' }} />
+                <Text style={styles.switchText}>Daycare (extended time)</Text>
+              </View>
+              <Row>
+                <Button label="Cancel" variant="secondary" onPress={() => setEditing(null)} disabled={busy} />
+                <Button label={busy ? 'Saving…' : 'Save changes'} onPress={saveStudent} disabled={busy} />
+              </Row>
+            </Card>
+          )}
           <Dropdown label="Grade" options={[{ label: 'All grades', value: '' }, ...gradeOptions]} value={gradeFilter} onChange={setGradeFilter} />
           <Input placeholder="Search for a student…" value={search} onChangeText={setSearch} />
           {visible.length === 0 ? (
@@ -214,6 +279,7 @@ export function StudentManagementScreen() {
                 <Muted>Parent(s): {student.guardians.length ? student.guardians.map(g => g.fullName).join(', ') : 'No parent linked'}</Muted>
                 {canManageSchool && (
                   <Row>
+                    <Button label="Edit" variant="secondary" small onPress={() => startEdit(student)} disabled={busy} />
                     <Button label={suspended ? 'Reactivate' : 'Suspend'} variant="secondary" small onPress={() => toggleSuspend(student)} disabled={busy} />
                     <Button label="Export" variant="secondary" small onPress={() => exportRecord(student)} disabled={busy} />
                     <Button label="Remove" variant="danger" small onPress={() => remove(student)} disabled={busy} />

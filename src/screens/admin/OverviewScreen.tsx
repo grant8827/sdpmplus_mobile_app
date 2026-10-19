@@ -5,6 +5,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Screen } from '../../components/Screen';
 import { SchoolBadge } from '../../components/SchoolBadge';
 import { PlanStatusBanner } from '../../components/PlanStatusBanner';
+import { PolicyPrompt } from '../../components/PolicyPrompt';
 import { usePlanStatus } from '../../utils/planStatus';
 import { SummaryTile } from '../../components/SummaryTile';
 import { useAuth } from '../../context/AuthContext';
@@ -28,7 +29,7 @@ const POLL_MS = 4000;
  * without requiring approval belongs.
  */
 export function OverviewScreen() {
-  const { token } = useAuth();
+  const { token, canManageSchool } = useAuth();
   const navigation = useNavigation<BottomTabNavigationProp<AdminTabParamList>>();
   // Straight after registering a school: on to choosing a plan (free trial or pay).
   useEffect(() => {
@@ -59,6 +60,8 @@ export function OverviewScreen() {
     <Screen title="Overview" subtitle="School-wide snapshot.">
       <SchoolBadge />
       <PlanStatusBanner plan={plan} />
+      {/* School administrators are asked to read Legal & Policies until someone confirms it. */}
+      {canManageSchool && <PolicyPrompt />}
       <View style={styles.grid}>
         <SummaryTile label="Total Enrolled Students" value={overview?.totalStudents ?? 0} />
         <SummaryTile label="Active Teachers" value={overview?.activeTeachers ?? 0} />
