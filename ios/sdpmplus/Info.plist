@@ -35,6 +35,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Used to confirm you're at school before enabling drop-off and pick-up.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SDPMPlus uses your location to confirm that you are at the school when requesting a student drop-off or pick-up. The app does not track your location in the background.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SDPMPlus uses your photo library so authorized school staff can select profile photos for students and staff or choose a school logo.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -49,6 +53,13 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>

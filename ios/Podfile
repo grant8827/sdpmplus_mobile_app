@@ -30,5 +30,26 @@ target 'sdpmplus' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Newer Xcode clang rejects fmt's consteval format-string checks.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'fmt'
+      target.build_configurations.each do |config|
+        defs = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] || ['$(inherited)']
+        defs = [defs] if defs.is_a?(String)
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = defs + ['FMT_USE_CONSTEVAL=0']
+      end
+    end
+    # fmt 11.0.2 ignores a predefined FMT_USE_CONSTEVAL and sets it to 1 on
+    # new clang, so make its detection respect the define above.
+    fmt_base = File.join(installer.sandbox.root, 'fmt', 'include', 'fmt', 'base.h')
+    if File.exist?(fmt_base)
+      source = File.read(fmt_base)
+      detect = "#if !defined(__cpp_lib_is_constant_evaluated)\n#  define FMT_USE_CONSTEVAL 0"
+      if source.include?(detect) && !source.include?('#if defined(FMT_USE_CONSTEVAL)')
+        File.chmod(0644, fmt_base)
+        File.write(fmt_base, source.sub(detect, "#if defined(FMT_USE_CONSTEVAL)\n// Use the provided definition.\n#elif !defined(__cpp_lib_is_constant_evaluated)\n#  define FMT_USE_CONSTEVAL 0"))
+      end
+    end
   end
 end
